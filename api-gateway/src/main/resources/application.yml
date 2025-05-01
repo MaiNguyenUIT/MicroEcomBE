@@ -2,12 +2,12 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: rating-route
+        - id: cart-route
           uri: http://localhost:6062
           predicates:
-            - Path=/api/rating/**, /api/rating
+            - Path=/api/cart/**, /api/cart
 
-        - id: movie-route
+        - id: product-route
           uri: http://localhost:6061
           predicates:
             - Path=/api/movie/**, /api/movie
@@ -15,7 +15,12 @@ spring:
         - id: user-route
           uri: http://localhost:6060
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/auth/**, /api/user, /api/user/**
+
+        - id: order-route
+          uri: http://localhost:6063
+          predicates:
+            - Path=/api/order/**
 app:
   security:
     public-endpoints:

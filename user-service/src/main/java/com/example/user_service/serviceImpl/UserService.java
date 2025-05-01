@@ -1,9 +1,7 @@
 package com.example.user_service.serviceImpl;
 
 import com.example.user_service.config.JwtProvider;
-import com.example.user_service.dto.AuthResponse;
-import com.example.user_service.dto.LoginRequest;
-import com.example.user_service.dto.RegisterRequest;
+import com.example.user_service.dto.*;
 import com.example.user_service.exception.BadRequestException;
 import com.example.user_service.exception.NotFoundException;
 import com.example.user_service.model.User;
@@ -12,11 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.List;
 
 @Service
 public class UserService implements com.example.user_service.service.UserService {
@@ -59,21 +59,34 @@ public class UserService implements com.example.user_service.service.UserService
     }
 
     @Override
-    public User getUserById(String id) {
-        return userRepository.findById(id).orElseThrow(
-                () -> new NotFoundException("User not found with id: " + id));
-    }
+    public User findUserByJwtToken() {
+        return userRepository.findByusername(SecurityContextHolder.getContext().getAuthentication().getName());
+    };
 
     @Override
-    public User getUserByUserName(String userName) {
-        User user = userRepository.findByusername(userName);
-        if(user == null){
-            throw new NotFoundException("User not found with username: " + userName);
-        }
-        return user;
+    public User findUserByUserId(String userId) {
+        return userRepository.findById(userId).orElseThrow(
+                () -> new NotFoundException("User is not found with id: " + userId));
+    };
+
+    @Override
+    public List<User> getAllUser(){
+        return userRepository.findByRole("ROLE_USER");
+    };
+
+    @Override
+    public List<User> getAllSeller(){
+        return userRepository.findByRole("ROLE_SELLER");
+    };
+
+
+    @Override
+    public User updateUserInformation(UserInforDTO userInforDTO, User user) {
+        user.setPhone(userInforDTO.getPhone());
+        user.setPhoto(userInforDTO.getPhoto());
+        user.setAddress(userInforDTO.getAddress());
+        return userRepository.save(user);
     }
-
-
 
 
     private Authentication authenticate(String username, String password) {
@@ -91,4 +104,13 @@ public class UserService implements com.example.user_service.service.UserService
         return new UsernamePasswordAuthenticationToken(userDetails,
                 null, userDetails.getAuthorities());
     }
+
+    @Override
+    public User blockUser(String userId){
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new NotFoundException("User is not found with id: " + userId)
+        );
+        user.setBlock(true);
+        return userRepository.save(user);
+    };
 }
