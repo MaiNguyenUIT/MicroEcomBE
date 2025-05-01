@@ -1,0 +1,22 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: rating-route
+          uri: http://localhost:6062
+          predicates:
+            - Path=/api/rating/**, /api/rating
+
+        - id: movie-route
+          uri: http://localhost:6061
+          predicates:
+            - Path=/api/movie/**, /api/movie
+
+        - id: user-route
+          uri: http://localhost:6060
+          predicates:
+            - Path=/api/auth/**
+app:
+  security:
+    public-endpoints:
+      - /api/auth/**
