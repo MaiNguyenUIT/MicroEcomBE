@@ -1,5 +1,6 @@
 package com.example.user_service.config;
 
+import com.example.user_service.filter.CustomSecurityContextFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -9,6 +10,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -21,7 +23,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(Authorize -> Authorize
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated())
-
+                .addFilterBefore(new CustomSecurityContextFilter(), BasicAuthenticationFilter.class)
                 .csrf(csrt -> csrt.disable());
 
         return http.build();

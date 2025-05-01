@@ -13,6 +13,7 @@ import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -69,18 +70,11 @@ public class JwtAuthenticationFilter implements WebFilter {
             String authorities = String.valueOf(claims.get("authorities"));
 
             ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
-                    .header("X-User-Name", username)
-                    .header("X-User-Roles", authorities)
+                    .header("Authorization", authHeader)
                     .build();
-
-            ServerWebExchange modifiedExchange = exchange.mutate()
-                    .request(modifiedRequest)
-                    .build();
-
-            String userName = modifiedExchange.getRequest().getHeaders().getFirst("X-User-Name");
-            System.out.println(userName);
 
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
+
         } catch (Exception e) {
             return unauthorizedResponse(exchange, "Invalid JWT token");
         }
