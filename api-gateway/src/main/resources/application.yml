@@ -10,7 +10,11 @@ spring:
         - id: product-route
           uri: http://localhost:6061
           predicates:
-            - Path=/api/movie/**, /api/movie
+            - Path=/api/admin/product/**, /api/admin/product,
+              /api/seller/product/**, /api/seller/product,
+              /api/product/**, /api/product,
+              /api/admin/category/**, /api/admin/category,
+              /api/category/**, /api/category
 
         - id: user-route
           uri: http://localhost:6060
@@ -25,3 +29,5 @@ app:
   security:
     public-endpoints:
       - /api/auth/**
+      - /api/product/**
+      - /api/product
