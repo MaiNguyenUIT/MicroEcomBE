@@ -6,12 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.example.CartService.DTO.CartItemDTO;
+import com.example.CartService.DTO.ProductDTO;
+import com.example.CartService.client.ProductClient;
 import com.example.CartService.exception.NotFoundException;
 import com.example.CartService.mapper.CartItemMapper;
 import com.example.CartService.model.*;
 import com.example.CartService.repository.CartRepository;
 import com.example.CartService.repository.GuestCartRepository;
-import com.example.CartService.repository.ProductRepository;
 
 import java.util.Map;
 import java.util.Optional;
@@ -19,177 +20,167 @@ import java.util.stream.Collectors;
 
 @Service
 public class CartService implements com.example.CartService.service.Service.CartService {
-    @Autowired
-    private CartRepository cartRepository;
-    @Autowired
-    private GuestCartRepository guestCartRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Override
-    public Cart addItemToUserCart(String userId, CartItemDTO cartItemDTO) {
-        Cart userCart = cartRepository.findByuserId(userId).orElse(null);
-        if(userCart == null){
-            Cart cart = new Cart();
-            Product product = productRepository.findById(cartItemDTO.getProductId())
-                    .orElseThrow(() -> new NotFoundException("Product not found"));
-            cart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO));
-            cart.setTotalItem(1);
-            cart.setTotalPrice(product.getPrice());
-            cart.setUserId(userId);
-            return cartRepository.save(cart);
-        } else{
-            userCart.getCartItems().stream()
-                    .filter(item -> item.getProductId().equals(cartItemDTO.getProductId()))
-                    .findFirst()
-                    .ifPresentOrElse(
-                            existingItem -> existingItem.setQuantity(existingItem.getQuantity() + 1),
-                            () -> userCart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO))
-                    );
+@Autowired
+private CartRepository cartRepository;
+@Autowired
+private GuestCartRepository guestCartRepository;
 
-            return cartRepository.save(updateCartInfor(userCart));
-        }
-    }
-    @Override
-    public Cart getCartByUserId(String userId) {
-        return cartRepository.findByuserId(userId)
-                .orElseThrow(() -> new NotFoundException("Cart not found"));
-    }
+@Autowired
+private ProductClient productClient;
 
-    @Override
-    public Cart updateItemQuantity(String userId, String productId, int quantity) {
-        Cart cart = cartRepository.findByuserId(userId)
-                .orElseThrow(() -> new NotFoundException("Cart not found"));
-        Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
-                .filter(item -> item.getProductId().equals(productId))
-                .findFirst();
+@Override
+public Cart addItemToUserCart(String userId, CartItemDTO cartItemDTO) {
+    Cart userCart = cartRepository.findByuserId(userId).orElse(null);
+    ProductDTO product = productClient.getProductById(cartItemDTO.getProductId());
 
-        if (cartItemOptional.isPresent()) {
-            CartItem cartItem = cartItemOptional.get();
+    if (userCart == null) {
+        Cart cart = new Cart();
+        cart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO));
+        cart.setTotalItem(1);
+        cart.setTotalPrice(product.getPrice());
+        cart.setUserId(userId);
+        return cartRepository.save(cart);
+    } else {
+        userCart.getCartItems().stream()
+                .filter(item -> item.getProductId().equals(cartItemDTO.getProductId()))
+                .findFirst()
+                .ifPresentOrElse(
+                        existingItem -> existingItem.setQuantity(existingItem.getQuantity() + 1),
+                        () -> userCart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO))
+                );
 
-            if (quantity > 0) {
-                cartItem.setQuantity(quantity); // Update quantity
-            } else {
-                cart.getCartItems().remove(cartItem); // Remove item if quantity is zero
-            }
-        } else {
-            throw new NotFoundException("Product not found in cart");
-        }
-
-        return cartRepository.save(updateCartInfor(cart));
-    }
-
-    @Override
-    public Cart deleteItemFromCart(String userId, String productId) {
-        Cart cart = cartRepository.findByuserId(userId)
-                .orElseThrow(() -> new NotFoundException("Cart not found"));
-        // Find and remove the cart item by productId
-        cart.getCartItems().removeIf(item -> item.getProductId().equals(productId));
-        // Save the updated cart
-        return cartRepository.save(updateCartInfor(cart));
-    }
-
-    @Override
-    public void clearCart(String userId) {
-        cartRepository.deleteByuserId(userId);
-    }
-
-    @Override
-    public Cart mergeGuestCartToUserCart(String sessionId, String userId) {
-        // Lấy guestCart, nếu không có thì trả về userCart hiện tại
-        GuestCart guestCart = guestCartRepository.findById(sessionId).orElse(null);
-        Cart userCart = cartRepository.findByuserId(userId).orElse(new Cart());
-        userCart.setUserId(userId); // Đảm bảo set userId cho userCart
-
-        if (guestCart != null) {
-            // Merge từng CartItem từ guestCart vào userCart
-            for (CartItem guestItem : guestCart.getCartItems()) {
-                userCart.getCartItems().stream()
-                        .filter(userItem -> userItem.getProductId().equals(guestItem.getProductId()))
-                        .findFirst()
-                        .ifPresentOrElse(
-                                existingItem -> {
-                                    // Cập nhật số lượng cho mặt hàng đã tồn tại
-                                    existingItem.setQuantity(existingItem.getQuantity() + guestItem.getQuantity());
-                                },
-                                () -> {
-                                    // Thêm mới nếu chưa có mặt hàng đó trong userCart
-                                    userCart.getCartItems().add(guestItem);
-                                }
-                        );
-            }
-            // Sau khi merge, xoá guestCart
-            guestCartRepository.deleteById(sessionId);
-        }
-        // Lưu và trả về giỏ hàng của user
         return cartRepository.save(updateCartInfor(userCart));
     }
+}
 
+@Override
+public Cart getCartByUserId(String userId) {
+    return cartRepository.findByuserId(userId)
+            .orElseThrow(() -> new NotFoundException("Cart not found"));
+}
 
-    @Override
-    public Cart increaseCartItem(String userId, String productId) {
-        Cart cart = cartRepository.findByuserId(userId)
-                .orElseThrow(() -> new NotFoundException("Cart not found"));
+@Override
+public Cart updateItemQuantity(String userId, String productId, int quantity) {
+    Cart cart = cartRepository.findByuserId(userId)
+            .orElseThrow(() -> new NotFoundException("Cart not found"));
+    Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
+            .filter(item -> item.getProductId().equals(productId))
+            .findFirst();
 
-        Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
-                .filter(item -> item.getProductId().equals(productId))
-                .findFirst();
-
-        if (cartItemOptional.isPresent()) {
-            CartItem cartItem = cartItemOptional.get();
-            cartItem.setQuantity(cartItem.getQuantity() + 1);
+    if (cartItemOptional.isPresent()) {
+        CartItem cartItem = cartItemOptional.get();
+        if (quantity > 0) {
+            cartItem.setQuantity(quantity);
         } else {
-            throw new NotFoundException("Product not found in cart");
+            cart.getCartItems().remove(cartItem);
         }
-
-        return cartRepository.save(updateCartInfor(cart));
+    } else {
+        throw new NotFoundException("Product not found in cart");
     }
 
-    @Override
-    public Cart decreaseCartItem(String userId, String productId) {
-        Cart cart = cartRepository.findByuserId(userId)
-                .orElseThrow(() -> new NotFoundException("Cart not found"));
+    return cartRepository.save(updateCartInfor(cart));
+}
 
-        Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
-                .filter(item -> item.getProductId().equals(productId))
-                .findFirst();
+@Override
+public Cart deleteItemFromCart(String userId, String productId) {
+    Cart cart = cartRepository.findByuserId(userId)
+            .orElseThrow(() -> new NotFoundException("Cart not found"));
+    cart.getCartItems().removeIf(item -> item.getProductId().equals(productId));
+    return cartRepository.save(updateCartInfor(cart));
+}
 
-        if (cartItemOptional.isPresent()) {
-            CartItem cartItem = cartItemOptional.get();
-            int newQuantity = cartItem.getQuantity() - 1;
+@Override
+public void clearCart(String userId) {
+    cartRepository.deleteByuserId(userId);
+}
 
-            if (newQuantity > 0) {
-                cartItem.setQuantity(newQuantity);
-            } else {
-                cart.getCartItems().remove(cartItem); // Remove item if quantity reaches zero
-            }
+@Override
+public Cart mergeGuestCartToUserCart(String sessionId, String userId) {
+    GuestCart guestCart = guestCartRepository.findById(sessionId).orElse(null);
+    Cart userCart = cartRepository.findByuserId(userId).orElse(new Cart());
+    userCart.setUserId(userId);
+
+    if (guestCart != null) {
+        for (CartItem guestItem : guestCart.getCartItems()) {
+            userCart.getCartItems().stream()
+                    .filter(userItem -> userItem.getProductId().equals(guestItem.getProductId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            existingItem -> existingItem.setQuantity(existingItem.getQuantity() + guestItem.getQuantity()),
+                            () -> userCart.getCartItems().add(guestItem)
+                    );
+        }
+        guestCartRepository.deleteById(sessionId);
+    }
+
+    return cartRepository.save(updateCartInfor(userCart));
+}
+
+@Override
+public Cart increaseCartItem(String userId, String productId) {
+    Cart cart = cartRepository.findByuserId(userId)
+            .orElseThrow(() -> new NotFoundException("Cart not found"));
+
+    Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
+            .filter(item -> item.getProductId().equals(productId))
+            .findFirst();
+
+    if (cartItemOptional.isPresent()) {
+        CartItem cartItem = cartItemOptional.get();
+        cartItem.setQuantity(cartItem.getQuantity() + 1);
+    } else {
+        throw new NotFoundException("Product not found in cart");
+    }
+
+    return cartRepository.save(updateCartInfor(cart));
+}
+
+@Override
+public Cart decreaseCartItem(String userId, String productId) {
+    Cart cart = cartRepository.findByuserId(userId)
+            .orElseThrow(() -> new NotFoundException("Cart not found"));
+
+    Optional<CartItem> cartItemOptional = cart.getCartItems().stream()
+            .filter(item -> item.getProductId().equals(productId))
+            .findFirst();
+
+    if (cartItemOptional.isPresent()) {
+        CartItem cartItem = cartItemOptional.get();
+        int newQuantity = cartItem.getQuantity() - 1;
+
+        if (newQuantity > 0) {
+            cartItem.setQuantity(newQuantity);
         } else {
-            throw new NotFoundException("Product not found in cart");
+            cart.getCartItems().remove(cartItem);
         }
-
-        return cartRepository.save(updateCartInfor(cart));
+    } else {
+        throw new NotFoundException("Product not found in cart");
     }
 
-    @Override
-    public Cart updateCartInfor(Cart cart) {
-        List<String> productIds = cart.getCartItems().stream()
-                .map(CartItem::getProductId)
-                .collect(Collectors.toList());
+    return cartRepository.save(updateCartInfor(cart));
+}
 
-        List<Product> products = productRepository.findAllById(productIds);
+@Override
+public Cart updateCartInfor(Cart cart) {
+    List<String> productIds = cart.getCartItems().stream()
+            .map(CartItem::getProductId)
+            .collect(Collectors.toList());
 
-        Map<String, Integer> productPriceMap = products.stream()
-                .collect(Collectors.toMap(Product::getId, Product::getPrice));
+    List<ProductDTO> products = productClient.getProductsByIds(productIds);
 
-        int totalPrice = 0;
-        int totalItem = 0;
+    Map<String, Integer> productPriceMap = products.stream()
+            .collect(Collectors.toMap(ProductDTO::getId, ProductDTO::getPrice));
 
-        for (CartItem i : cart.getCartItems()) {
-            totalItem += i.getQuantity();
-            totalPrice += productPriceMap.get(i.getProductId()) * i.getQuantity();
-        }
+    int totalPrice = 0;
+    int totalItem = 0;
 
-        cart.setTotalItem(totalItem);
-        cart.setTotalPrice(totalPrice);
-        return cart;
+    for (CartItem i : cart.getCartItems()) {
+        totalItem += i.getQuantity();
+        totalPrice += productPriceMap.getOrDefault(i.getProductId(), 0) * i.getQuantity();
     }
+
+    cart.setTotalItem(totalItem);
+    cart.setTotalPrice(totalPrice);
+    return cart;
+}
 }
