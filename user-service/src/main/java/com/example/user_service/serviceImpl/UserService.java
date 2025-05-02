@@ -60,7 +60,9 @@ public class UserService implements com.example.user_service.service.UserService
 
     @Override
     public User findUserByJwtToken() {
-        return userRepository.findByusername(SecurityContextHolder.getContext().getAuthentication().getName());
+        return userRepository.findById(SecurityContextHolder.getContext().getAuthentication().getName()).orElseThrow(
+                () -> new NotFoundException("User not found with id: " + SecurityContextHolder.getContext().getAuthentication().getName())
+        );
     };
 
     @Override

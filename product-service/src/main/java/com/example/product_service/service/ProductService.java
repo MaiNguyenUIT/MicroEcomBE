@@ -14,6 +14,7 @@ public interface ProductService {
     List<ProductResponse> getAllProduct();
     List<ProductResponse> filterProductByCategory(String categoryId);
     List<ProductResponse> getAllActiveProduct();
-    List<ProductResponse> findProductsByUsername();
+    List<ProductResponse> findProductsByOwnerId();
     Product approveProduct(String productId);
+    List<Product> getProductInCart(List<String> productIds);
 }

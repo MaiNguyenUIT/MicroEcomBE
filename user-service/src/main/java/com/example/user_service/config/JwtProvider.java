@@ -27,21 +27,13 @@ public class JwtProvider {
 
         String jwt = Jwts.builder().setIssuedAt(new Date())
                 .setExpiration(new Date(new Date().getTime() + EXPIRATION_TIME))
-                .claim("username", authentication.getName())
+                .claim("userId", authentication.getName())
                 .claim("authorities", role)
                 .signWith(secretKey)
                 .compact();
         return jwt;
     }
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 3; // 3 giờ
-
-    public String getUserNameFromJwtToken(String jwt){
-        jwt = jwt.substring(7);
-        Claims claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(jwt).getBody();
-        String username = String.valueOf(claims.get("username"));
-        return username;
-    }
-
 
     private String populateAuthorities(Collection<? extends GrantedAuthority>authorities) {
         Set<String> auths = new HashSet<>();

@@ -28,6 +28,6 @@ public class CustomerUserDetailService implements UserDetailsService {
         Role user_role = user.getRole();
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority(user_role.toString()));
-        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), authorities);
+        return new org.springframework.security.core.userdetails.User(user.getId(), user.getPassword(), authorities);
     }
 }

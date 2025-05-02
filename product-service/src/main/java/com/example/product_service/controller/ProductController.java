@@ -1,13 +1,11 @@
 package com.example.product_service.controller;
 
 import com.example.product_service.dto.ProductResponse;
+import com.example.product_service.model.Product;
 import com.example.product_service.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -30,6 +28,12 @@ public class ProductController {
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<ProductResponse>> getProductByCategory(@PathVariable String categoryId){
         List<ProductResponse> products = productService.filterProductByCategory(categoryId);
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/bulk")
+    public ResponseEntity<List<Product>> getProductInCart(@RequestBody List<String> ids){
+        List<Product> products = productService.getProductInCart(ids);
         return ResponseEntity.ok(products);
     }
 }

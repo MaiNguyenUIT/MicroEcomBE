@@ -19,6 +19,6 @@ public class Product {
     private String description;
     private List<String> image;
     private PRODUCT_STATE productState;
-    private String username;
+    private String ownerId;
     private boolean isApprove = false;
 }
