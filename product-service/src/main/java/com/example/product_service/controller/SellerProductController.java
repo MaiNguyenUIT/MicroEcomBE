@@ -40,7 +40,7 @@ public class SellerProductController {
     @PreAuthorize("hasRole('SELLER') || hasRole('ADMIN')")
     @GetMapping()
     public ResponseEntity<List<ProductResponse>> getAllProduct(){
-        List<ProductResponse> products = productService.findProductsByUsername();
+        List<ProductResponse> products = productService.findProductsByOwnerId();
         return ResponseEntity.ok(products);
     }
 }
