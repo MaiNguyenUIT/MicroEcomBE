@@ -1,6 +1,7 @@
 package com.example.cart_service.service.serviceImpl;
 
 import com.example.cart_service.DTO.CartItemDTO;
+import com.example.cart_service.DTO.CartItemResponse;
 import com.example.cart_service.DTO.CartResponse;
 import com.example.cart_service.DTO.ProductDTO;
 import com.example.cart_service.client.ProductClient;
@@ -13,13 +14,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class CartService implements com.example.cart_service.service.Service.CartService {
+
 @Autowired
 private CartRepository cartRepository;
 @Autowired
@@ -64,7 +68,32 @@ public CartResponse getCartByUserId() {
             .map(CartItem::getProductId)
             .distinct()
             .toList();
-    cartResponse.setProducts(productClient.getProductsByIds(productIds));
+    List<ProductDTO> productDTOS = productClient.getProductsByIds(productIds);
+    
+    Map<String, ProductDTO> productMap = productDTOS.stream()
+            .collect(Collectors.toMap(ProductDTO::getId, Function.identity()));
+
+    List<CartItemResponse> cartItemResponses = new ArrayList<>();
+
+    for (CartItem cartItem : cart.getCartItems()) {
+        ProductDTO productDTO = productMap.get(cartItem.getProductId());
+        if (productDTO != null) {
+            CartItemResponse cartItemResponse = new CartItemResponse();
+            cartItemResponse.setImage(productDTO.getImage());
+            cartItemResponse.setPrice(productDTO.getPrice());
+            cartItemResponse.setProductCategory(productDTO.getCategoryName());
+            cartItemResponse.setRegularPrice(productDTO.getRegularPrice());
+            cartItemResponse.setDescription(productDTO.getDescription());
+            cartItemResponse.setProductId(productDTO.getId());
+            cartItemResponse.setProductName(productDTO.getName());
+
+            cartItemResponse.setQuantity(cartItem.getQuantity());
+            cartItemResponse.setAddedAt(cartItem.getAddedAt());
+            cartItemResponses.add(cartItemResponse);
+        }
+    }
+    
+    cartResponse.setCartItems(cartItemResponses);
     cartResponse.setTotalItem(productIds.size());
     return cartResponse;
 }

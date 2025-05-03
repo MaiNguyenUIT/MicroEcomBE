@@ -11,7 +11,7 @@ public class CartResponse {
     @Id
     private String id;
     private int totalPrice;
-    private List<ProductDTO> products = new ArrayList<>();
+    private List<CartItemResponse> cartItems = new ArrayList<>();
     private int totalItem;
     private String userId;
 }
