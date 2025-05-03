@@ -66,7 +66,7 @@ public class JwtAuthenticationFilter implements WebFilter {
             SecretKey secretKey = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
             Claims claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(jwt).getBody();
 
-            String username = String.valueOf(claims.get("username"));
+            String userId = String.valueOf(claims.get("userId"));
             String authorities = String.valueOf(claims.get("authorities"));
 
             ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()

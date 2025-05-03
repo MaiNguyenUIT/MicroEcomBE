@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,7 +50,7 @@ public class ProductServiceImpl implements ProductService{
 
 
         Product product = ProductMapper.INSTANCE.toEntity(productDTO);
-        product.setUsername(SecurityContextHolder.getContext().getAuthentication().getName());
+        product.setOwnerId(SecurityContextHolder.getContext().getAuthentication().getName());
         productRepository.save(product);
 
         return productDTO;
@@ -164,9 +165,9 @@ public class ProductServiceImpl implements ProductService{
     }
 
     @Override
-    public List<ProductResponse> findProductsByUsername() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<Product> products = productRepository.findByusername(username);
+    public List<ProductResponse> findProductsByOwnerId() {
+        String ownerId = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<Product> products = productRepository.findByownerId(ownerId);
         List<String> categoryIds = products.stream()
                 .map(Product::getCategoryId)
                 .distinct()
@@ -189,5 +190,13 @@ public class ProductServiceImpl implements ProductService{
                 .orElseThrow(() -> new NotFoundException("Product not found"));
         existProduct.setApprove(true);
         return productRepository.save(existProduct);
+    }
+
+    @Override
+    public List<Product> getProductInCart(List<String> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return productRepository.findAllById(productIds);
     }
 }
