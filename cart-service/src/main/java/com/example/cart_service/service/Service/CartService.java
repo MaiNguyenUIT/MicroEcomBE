@@ -9,7 +9,7 @@ public interface CartService {
     CartResponse getCartByUserId();
     Cart updateItemQuantity(String productId, int quantity);
     Cart deleteItemFromCart(String productId);
-    void clearCart();
+    void clearUserCart();
     Cart increaseCartItem( String productId);
     Cart decreaseCartItem(String productId);
     Cart updateCartInfor(Cart cart);

@@ -1,6 +1,6 @@
 package com.example.order_service.config;
 
-import com.example.cart_service.filter.CustomSecurityContextFilter;
+import com.example.order_service.filter.CustomSecurityContextFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;

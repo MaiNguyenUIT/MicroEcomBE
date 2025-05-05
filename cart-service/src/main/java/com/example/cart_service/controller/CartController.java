@@ -34,7 +34,7 @@ public class CartController {
 
     @DeleteMapping()
     public ResponseEntity<String> clearUserCart() throws Exception {
-        cartService.clearCart();
+        cartService.clearUserCart();
         return new ResponseEntity<>("Clear cart successfully", HttpStatus.OK);
     }
 

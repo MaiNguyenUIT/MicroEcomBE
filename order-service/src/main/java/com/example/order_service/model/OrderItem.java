@@ -2,7 +2,7 @@ package com.example.order_service.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
+
 
 @Entity
 @Table(name = "order_items")

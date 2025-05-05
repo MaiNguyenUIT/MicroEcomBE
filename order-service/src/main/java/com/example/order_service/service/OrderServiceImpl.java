@@ -15,9 +15,11 @@ import com.example.order_service.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class OrderServiceImpl implements OrderService{
     @Autowired
     private OrderRepository orderRepository;
@@ -51,6 +53,7 @@ public class OrderServiceImpl implements OrderService{
         }
 
         order.setOrderAmount(cart.getTotalPrice());
+        sendClearCart();
 
         return orderRepository.save(order);
     }
@@ -60,6 +63,10 @@ public class OrderServiceImpl implements OrderService{
         event.setProductId(productId);
         event.setQuantity(quantity);
         streamBridge.send("stockUpdate-out-0", event);
+    }
+
+    public void sendClearCart() {
+        streamBridge.send("clearCart-out-0", SecurityContextHolder.getContext().getAuthentication().getName());
     }
 
     @Override

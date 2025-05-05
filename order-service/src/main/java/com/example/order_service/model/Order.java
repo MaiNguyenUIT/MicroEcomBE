@@ -4,7 +4,6 @@ import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.ENUM.PAYMENT_METHOD;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@FeignClient(name = "product-service",
+@FeignClient(name = "cart-service",
         url = "http://localhost:4444/api/cart",
         configuration = FeignConfig.class
 )
