@@ -18,4 +18,5 @@ public class CartItem {
 
     private int quantity = 1;
     private LocalDateTime addedAt;
+    private String sellerId;
 }

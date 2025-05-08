@@ -50,7 +50,11 @@ public Cart addItemToUserCart(CartItemDTO cartItemDTO) {
                 .findFirst()
                 .ifPresentOrElse(
                         existingItem -> existingItem.setQuantity(existingItem.getQuantity() + 1),
-                        () -> userCart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO))
+                        () -> {
+                            CartItem newCartItem = CartItemMapper.INSTANCE.toEntity(cartItemDTO);
+                            newCartItem.setSellerId(product.getOwnerId());
+                            userCart.getCartItems().add(newCartItem);
+                        }
                 );
 
         return cartRepository.save(updateCartInfor(userCart));
