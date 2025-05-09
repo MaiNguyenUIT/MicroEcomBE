@@ -87,6 +87,7 @@ public class UserService implements com.example.user_service.service.UserService
         user.setPhone(userInforDTO.getPhone());
         user.setPhoto(userInforDTO.getPhoto());
         user.setAddress(userInforDTO.getAddress());
+        user.setEmail(userInforDTO.getEmail());
         return userRepository.save(user);
     }
 

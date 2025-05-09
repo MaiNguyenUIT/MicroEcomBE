@@ -19,7 +19,7 @@ public class AdminOrderController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable String id, @RequestBody UpdateOrderStatusRequest request) throws Exception{
+    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id, @RequestBody UpdateOrderStatusRequest request) throws Exception{
        Order apiResult = adminOrderService.updateOrderStatus(id, request.getOrderStatus());
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }

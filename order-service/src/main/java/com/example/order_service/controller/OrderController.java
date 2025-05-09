@@ -28,13 +28,13 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable String id) throws Exception {
+    public ResponseEntity<Order> getOrderById(@PathVariable Long id) throws Exception {
         Order apiResult = orderService.getOrderById(id);
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Order> cancelOrder(@PathVariable String id) throws Exception {
+    public ResponseEntity<Order> cancelOrder(@PathVariable Long id) throws Exception {
        Order apiResult = orderService.cancelOrder(id);
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }

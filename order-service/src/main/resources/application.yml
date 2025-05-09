@@ -15,3 +15,9 @@ spring:
         clearCart-out-0:
           destination: clear-cart
           group: clear-cart-group
+        sendConfirmOrderMail-out-0:
+          destination: send-confirmOrderMail
+          group: send-confirmMail-group
+        sendUpdateOrderMail-out-0:
+          destination: send-updateOrderMail
+          group: send-updateMail-group
