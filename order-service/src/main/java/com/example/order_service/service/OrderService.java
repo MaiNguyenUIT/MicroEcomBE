@@ -7,10 +7,11 @@ import com.example.order_service.model.Order;
 import java.util.List;
 
 public interface OrderService {
-    Order createOrder(OrderDTO orderDTO);
+    List<Order> createOrder(OrderDTO orderDTO);
     Order getOrderById(String orderId);
     List<Order> getOrderByUserId();
     Order cancelOrder(String orderId);
     List<Order> getAllOrder();
     Order updateOrderStatus(String orderId, ORDER_STATUS orderStatus);
+    List<Order> getOrderBySellerId();
 }

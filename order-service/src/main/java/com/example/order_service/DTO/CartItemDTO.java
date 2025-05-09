@@ -16,4 +16,5 @@ public class CartItemDTO {
     private List<String> image;
     private int quantity;
     private LocalDateTime addedAt;
+    private String ownerId;
 }

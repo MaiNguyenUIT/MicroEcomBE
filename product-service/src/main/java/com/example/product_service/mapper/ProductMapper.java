@@ -13,6 +13,5 @@ public interface ProductMapper {
     @Mapping(target = "sold", ignore = true)
     Product toEntity(ProductDTO productDTO);
 
-
     ProductDTO toDTO(Product product);
 }

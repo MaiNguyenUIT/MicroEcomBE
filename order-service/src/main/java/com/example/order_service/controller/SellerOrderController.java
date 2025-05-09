@@ -12,22 +12,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/order")
-public class AdminOrderController {
+@RequestMapping("/api/seller/order")
+public class SellerOrderController {
     @Autowired
-    private OrderService adminOrderService;
+    private OrderService orderService;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SELLER')")
     @PutMapping("/{id}")
     public ResponseEntity<Order> updateOrderStatus(@PathVariable String id, @RequestBody UpdateOrderStatusRequest request) throws Exception{
-       Order apiResult = adminOrderService.updateOrderStatus(id, request.getOrderStatus());
+        Order apiResult = orderService.updateOrderStatus(id, request.getOrderStatus());
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('SELLER')")
     @GetMapping()
     public ResponseEntity<List<Order>> getAllOrder() throws Exception{
-        List<Order> apiResult = adminOrderService.getAllOrder();
+        List<Order> apiResult = orderService.getOrderBySellerId();
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
 }
