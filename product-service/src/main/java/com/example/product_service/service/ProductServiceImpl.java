@@ -121,7 +121,7 @@ public class ProductServiceImpl implements ProductService{
 
         return products.stream().map(product -> {
             ProductResponse productResponse = ProductResMapper.INSTANCE.toRes(product);
-            productResponse.setCategoryName(categoryMap.get(product.getCategoryId())); // Lấy tên category từ Map
+            productResponse.setCategoryName(categoryMap.get(product.getCategoryId()));
             return productResponse;
         }).collect(Collectors.toList());
     }
@@ -150,7 +150,7 @@ public class ProductServiceImpl implements ProductService{
 
     @Override
     public List<ProductResponse> getAllActiveProduct() {
-        List<Product> products = productRepository.findByProductStateAndIsApprove(PRODUCT_STATE.ACTIVE, true);;
+        List<Product> products = productRepository.findByProductStateAndIsApprove(PRODUCT_STATE.ACTIVE, true);
         List<String> categoryIds = products.stream()
                 .map(Product::getCategoryId)
                 .distinct()
@@ -217,27 +217,5 @@ public class ProductServiceImpl implements ProductService{
         }).collect(Collectors.toList());
     }
 
-    @Bean
-    public Consumer<StockUpdateEvent> stockUpdate(){
-        return event -> {
-            System.out.println("Stock update");
-            Product product = productRepository.findById(event.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
-            if (product.getQuantity() < event.getQuantity()) {
-                throw new RuntimeException("Not enough stock for product: " + product.getName());
-            }
-
-            int afterQuantity = product.getQuantity() - event.getQuantity();
-            product.setQuantity(afterQuantity);
-            product.setSold(product.getSold() + event.getQuantity());
-
-            if (afterQuantity == 0) {
-                product.setProductState(PRODUCT_STATE.HIDDEN);
-            }
-
-            productRepository.save(product);
-        };
-    }
 
 }

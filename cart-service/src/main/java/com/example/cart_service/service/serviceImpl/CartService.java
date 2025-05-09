@@ -52,7 +52,7 @@ public Cart addItemToUserCart(CartItemDTO cartItemDTO) {
                         existingItem -> existingItem.setQuantity(existingItem.getQuantity() + 1),
                         () -> {
                             CartItem newCartItem = CartItemMapper.INSTANCE.toEntity(cartItemDTO);
-                            newCartItem.setSellerId(product.getOwnerId());
+                            newCartItem.setOwnerId(product.getOwnerId());
                             userCart.getCartItems().add(newCartItem);
                         }
                 );
@@ -92,6 +92,7 @@ public CartResponse getCartByUserId() {
             cartItemResponse.setDescription(productDTO.getDescription());
             cartItemResponse.setProductId(productDTO.getId());
             cartItemResponse.setProductName(productDTO.getName());
+            cartItemResponse.setOwnerId(productDTO.getOwnerId());
 
             cartItemResponse.setQuantity(cartItem.getQuantity());
             cartItemResponse.setAddedAt(cartItem.getAddedAt());

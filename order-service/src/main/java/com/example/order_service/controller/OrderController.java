@@ -16,8 +16,8 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
     @PostMapping()
-    public ResponseEntity<Order> createOrder(@RequestBody OrderDTO orderDTO) throws Exception {
-        Order apiResult = orderService.createOrder(orderDTO);
+    public ResponseEntity<List<Order>> createOrder(@RequestBody OrderDTO orderDTO) throws Exception {
+        List<Order> apiResult = orderService.createOrder(orderDTO);
         return new ResponseEntity<>(apiResult, HttpStatus.CREATED);
     }
 

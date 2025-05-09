@@ -17,7 +17,11 @@ import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService{
@@ -32,30 +36,54 @@ public class OrderServiceImpl implements OrderService{
         this.streamBridge = streamBridge;
     }
 
+    //Sai
     @Override
-    public Order createOrder(OrderDTO orderDTO) {
+    public List<Order> createOrder(OrderDTO orderDTO) {
         CartDTO cart = cartClient.getUserCart();
         if (cart == null || cart.getCartItems().isEmpty()) {
             throw new BadRequestException("Cart is empty with user id: " + SecurityContextHolder.getContext().getAuthentication().getName());
         }
 
-        for (CartItemDTO item : cart.getCartItems()) {
-            sendStockUpdate(item.getProductId(), item.getQuantity());
-        }
+        Map<String, List<CartItemDTO>> itemsBySeller = cart.getCartItems()
+                .stream()
+                .collect(Collectors.groupingBy(CartItemDTO::getOwnerId));
 
-        Order order = OrderMapper.INSTANCE.toEntity(orderDTO);
-        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
-        for (CartItemDTO i : cart.getCartItems()) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setQuantity(i.getQuantity());
-            orderItem.setProductId(i.getProductId());
-            order.getOrderItems().add(orderItem);
-        }
+        List<Order> orders = new ArrayList<>();
 
-        order.setOrderAmount(cart.getTotalPrice());
+        for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
+            String sellerId = entry.getKey();
+            List<CartItemDTO> sellerItems = entry.getValue();
+
+            Order order = new Order();
+            order.setCoupon(orderDTO.getCoupon());
+            order.setShippingAddress(orderDTO.getShippingAddress());
+            order.setPaymentMethod(orderDTO.getPaymentMethod());
+            order.setOrderDateTime(orderDTO.getOrderDateTime());
+            order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
+            order.setSellerId(sellerId);
+            order.setOrderItems(new ArrayList<>());
+
+
+            int total = 0;
+
+            for (CartItemDTO item : sellerItems) {
+                sendStockUpdate(item.getProductId(), item.getQuantity());
+
+                OrderItem orderItem = new OrderItem();
+                orderItem.setProductId(item.getProductId());
+                orderItem.setQuantity(item.getQuantity());
+                orderItem.setOrder(order);
+                order.getOrderItems().add(orderItem);
+
+                total += item.getPrice();
+            }
+
+            order.setOrderAmount(total);
+            orders.add(orderRepository.save(order));
+        }
         sendClearCart();
 
-        return orderRepository.save(order);
+        return orders;
     }
 
     public void sendStockUpdate(String productId, int quantity) {
@@ -104,5 +132,10 @@ public class OrderServiceImpl implements OrderService{
     @Override
     public Order updateOrderStatus(String orderId, ORDER_STATUS orderStatus) {
         return null;
+    }
+
+    @Override
+    public List<Order> getOrderBySellerId() {
+        return orderRepository.findBySellerId(SecurityContextHolder.getContext().getAuthentication().getName());
     }
 }
