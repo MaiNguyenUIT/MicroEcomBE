@@ -3,8 +3,12 @@ package com.example.order_service.service;
 import com.example.order_service.DTO.CartDTO;
 import com.example.order_service.DTO.CartItemDTO;
 import com.example.order_service.DTO.OrderDTO;
+import com.example.order_service.DTO.UserDTO;
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.client.CartClient;
+import com.example.order_service.client.UserClient;
+import com.example.order_service.event.OrderConfirmEvent;
+import com.example.order_service.event.OrderUpdateStatusEvent;
 import com.example.order_service.event.StockUpdateEvent;
 import com.example.order_service.exception.BadRequestException;
 import com.example.order_service.exception.NotFoundException;
@@ -12,6 +16,8 @@ import com.example.order_service.mapper.OrderMapper;
 import com.example.order_service.model.Order;
 import com.example.order_service.model.OrderItem;
 import com.example.order_service.repository.OrderRepository;
+import org.apache.catalina.User;
+import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +35,8 @@ public class OrderServiceImpl implements OrderService{
     private OrderRepository orderRepository;
     @Autowired
     private CartClient cartClient;
+    @Autowired
+    private UserClient userClient;
 
     private final StreamBridge streamBridge;
 
@@ -48,6 +56,7 @@ public class OrderServiceImpl implements OrderService{
                 .stream()
                 .collect(Collectors.groupingBy(CartItemDTO::getOwnerId));
 
+        UserDTO userDTO = userClient.getUserFromJwtToken();
         List<Order> orders = new ArrayList<>();
 
         for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
@@ -79,11 +88,37 @@ public class OrderServiceImpl implements OrderService{
             }
 
             order.setOrderAmount(total);
-            orders.add(orderRepository.save(order));
+            Order createOrder = orderRepository.save(order);
+            OrderConfirmEvent orderConfirmEvent = buildConfirmEvent(userDTO, createOrder.getId(), createOrder.getOrderStatus(), createOrder.getOrderAmount());
+            sendConfirmEmail(orderConfirmEvent);
+            orders.add(createOrder);
         }
+
         sendClearCart();
 
         return orders;
+    }
+
+    public OrderConfirmEvent buildConfirmEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus, int orderAmount){
+        OrderConfirmEvent orderConfirmEvent = new OrderConfirmEvent();
+        orderConfirmEvent.setOrderStatus(orderStatus);
+        orderConfirmEvent.setOrderAmount(orderAmount);
+        orderConfirmEvent.setUserEmail(userDTO.getEmail());
+        orderConfirmEvent.setUserPhone(userDTO.getPhone());
+        orderConfirmEvent.setUserDisplayName(userDTO.getDisplayName());
+        orderConfirmEvent.setId(orderId);
+        return orderConfirmEvent;
+    }
+
+    public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
+        OrderUpdateStatusEvent orderUpdateStatusEvent = new OrderUpdateStatusEvent();
+        orderUpdateStatusEvent.setId(orderId);
+        orderUpdateStatusEvent.setOrderStatus(orderStatus);
+        orderUpdateStatusEvent.setUserEmail(userDTO.getEmail());
+        orderUpdateStatusEvent.setUserPhone(userDTO.getPhone());
+        orderUpdateStatusEvent.setUserDisplayName(userDTO.getDisplayName());
+
+        return orderUpdateStatusEvent;
     }
 
     public void sendStockUpdate(String productId, int quantity) {
@@ -97,8 +132,16 @@ public class OrderServiceImpl implements OrderService{
         streamBridge.send("clearCart-out-0", SecurityContextHolder.getContext().getAuthentication().getName());
     }
 
+    public void sendConfirmEmail(OrderConfirmEvent orderConfirmEvent) {
+        streamBridge.send("sendConfirmOrderMail-out-0", orderConfirmEvent);
+    }
+
+    public void sendUpdateEmail(OrderUpdateStatusEvent orderUpdateStatusEvent){
+        streamBridge.send("sendUpdateOrderMail-out-0", orderUpdateStatusEvent);
+    }
+
     @Override
-    public Order getOrderById(String orderId) {
+    public Order getOrderById(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + orderId));
 
@@ -110,7 +153,7 @@ public class OrderServiceImpl implements OrderService{
     }
 
     @Override
-    public Order cancelOrder(String orderId) {
+    public Order cancelOrder(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Order not found with id: " + orderId));
         if (!order.getUserId().equals(SecurityContextHolder.getContext().getAuthentication().getName())) {
@@ -130,8 +173,15 @@ public class OrderServiceImpl implements OrderService{
     }
 
     @Override
-    public Order updateOrderStatus(String orderId, ORDER_STATUS orderStatus) {
-        return null;
+    public Order updateOrderStatus(Long orderId, ORDER_STATUS orderStatus) {
+        UserDTO userDTO = userClient.getUserFromJwtToken();
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order not found with id: " + orderId));
+        order.setOrderStatus(orderStatus);
+
+        OrderUpdateStatusEvent orderUpdateStatusEvent = buildUpdateEvent(userDTO, orderId, orderStatus);
+        sendUpdateEmail(orderUpdateStatusEvent);
+        return orderRepository.save(order);
     }
 
     @Override

@@ -1,0 +1,18 @@
+spring:
+  cloud:
+    function:
+      definition: sendConfirmOrderMail;sendUpdateOrderMail
+    stream:
+      default-binder: rabbit
+      bindings:
+        sendConfirmOrderMail-in-0:
+          destination: send-confirmOrderMail
+          group: send-confirmMail-group
+        sendUpdateOrderMail-in-0:
+          destination: send-updateOrderMail
+          group: send-updateMail-group
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin

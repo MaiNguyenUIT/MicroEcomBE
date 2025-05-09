@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.amqp.RabbitConnectionDetails;
 
 @Data
 public class UserInforDTO {
+    private String email;
     private String phone;
     private String photo;
     private Address address;
