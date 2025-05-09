@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    function:
+      definition: stockUpdate
+    stream:
+      default-binder: rabbit
+      bindings:
+        stockUpdate-in-0:
+          destination: stock-update
+          group: stock-update-group
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin

@@ -1,0 +1,17 @@
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
+
+  cloud:
+    stream:
+      default-binder: rabbit
+      bindings:
+        stockUpdate-out-0:
+          destination: stock-update
+          group: stock-update-group
+        clearCart-out-0:
+          destination: clear-cart
+          group: clear-cart-group

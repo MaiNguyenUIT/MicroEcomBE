@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    function:
+      definition: clearCart
+    stream:
+      default-binder: rabbit
+      bindings:
+        clearCart-in-0:
+          destination: clear-cart
+          group: clear-cart-group
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin

@@ -11,6 +11,7 @@ import com.example.cart_service.model.Cart;
 import com.example.cart_service.model.CartItem;
 import com.example.cart_service.repository.CartRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,7 +50,11 @@ public Cart addItemToUserCart(CartItemDTO cartItemDTO) {
                 .findFirst()
                 .ifPresentOrElse(
                         existingItem -> existingItem.setQuantity(existingItem.getQuantity() + 1),
-                        () -> userCart.getCartItems().add(CartItemMapper.INSTANCE.toEntity(cartItemDTO))
+                        () -> {
+                            CartItem newCartItem = CartItemMapper.INSTANCE.toEntity(cartItemDTO);
+                            newCartItem.setSellerId(product.getOwnerId());
+                            userCart.getCartItems().add(newCartItem);
+                        }
                 );
 
         return cartRepository.save(updateCartInfor(userCart));
@@ -92,9 +98,12 @@ public CartResponse getCartByUserId() {
             cartItemResponses.add(cartItemResponse);
         }
     }
-    
+    int totalItem = 0;
+    for (CartItem cartItem : cart.getCartItems()){
+        totalItem += cartItem.getQuantity();
+    }
     cartResponse.setCartItems(cartItemResponses);
-    cartResponse.setTotalItem(productIds.size());
+    cartResponse.setTotalItem(totalItem);
     return cartResponse;
 }
 
@@ -131,7 +140,7 @@ public Cart deleteItemFromCart(String productId) {
 }
 
 @Override
-public void clearCart() {
+public void clearUserCart() {
     String userId = SecurityContextHolder.getContext().getAuthentication().getName();
     cartRepository.deleteByuserId(userId);
 }
@@ -205,5 +214,13 @@ public Cart updateCartInfor(Cart cart) {
     cart.setTotalItem(totalItem);
     cart.setTotalPrice(totalPrice);
     return cart;
+}
+
+@Bean
+public Consumer<String> clearCart(){
+    return clearString -> {
+        cartRepository.deleteByuserId(clearString);
+        System.out.println("📥 Nhận message từ RabbitMQ: " + clearString);
+    };
 }
 }

@@ -24,7 +24,8 @@ spring:
         - id: order-route
           uri: http://localhost:6063
           predicates:
-            - Path=/api/order/**
+            - Path=/api/order/**, /api/order/, 
+              /api/admin/**, /api/admin/
 app:
   security:
     public-endpoints:

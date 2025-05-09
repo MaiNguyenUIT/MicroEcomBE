@@ -31,9 +31,9 @@ public class ProductController {
         return ResponseEntity.ok(products);
     }
 
-    @GetMapping("/bulk")
-    public ResponseEntity<List<Product>> getProductInCart(@RequestBody List<String> ids){
-        List<Product> products = productService.getProductInCart(ids);
+    @PostMapping("/bulk")
+    public ResponseEntity<List<ProductResponse>> getProductInCart(@RequestBody List<String> ids){
+        List<ProductResponse> products = productService.getProductInCart(ids);
         return ResponseEntity.ok(products);
     }
 }

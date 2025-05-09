@@ -3,6 +3,7 @@ package com.example.product_service.service;
 import com.example.product_service.ENUM.PRODUCT_STATE;
 import com.example.product_service.dto.ProductDTO;
 import com.example.product_service.dto.ProductResponse;
+import com.example.product_service.event.StockUpdateEvent;
 import com.example.product_service.exception.BadRequestException;
 import com.example.product_service.exception.NotFoundException;
 import com.example.product_service.mapper.ProductMapper;
@@ -12,12 +13,14 @@ import com.example.product_service.model.Product;
 import com.example.product_service.repository.CategoryRepository;
 import com.example.product_service.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -193,10 +196,48 @@ public class ProductServiceImpl implements ProductService{
     }
 
     @Override
-    public List<Product> getProductInCart(List<String> productIds) {
+    public List<ProductResponse> getProductInCart(List<String> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return productRepository.findAllById(productIds);
+        List<Product> products = productRepository.findAllById(productIds);
+        List<String> categoryIds = products.stream()
+                .map(Product::getCategoryId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, String> categoryMap = categoryRepository.findAllById(categoryIds)
+                .stream()
+                .collect(Collectors.toMap(Category::getId, Category::getTitle));
+
+        return products.stream().map(product -> {
+            ProductResponse productResponse = ProductResMapper.INSTANCE.toRes(product);
+            productResponse.setCategoryName(categoryMap.get(product.getCategoryId())); // Lấy tên category từ Map
+            return productResponse;
+        }).collect(Collectors.toList());
     }
+
+    @Bean
+    public Consumer<StockUpdateEvent> stockUpdate(){
+        return event -> {
+            System.out.println("Stock update");
+            Product product = productRepository.findById(event.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            if (product.getQuantity() < event.getQuantity()) {
+                throw new RuntimeException("Not enough stock for product: " + product.getName());
+            }
+
+            int afterQuantity = product.getQuantity() - event.getQuantity();
+            product.setQuantity(afterQuantity);
+            product.setSold(product.getSold() + event.getQuantity());
+
+            if (afterQuantity == 0) {
+                product.setProductState(PRODUCT_STATE.HIDDEN);
+            }
+
+            productRepository.save(product);
+        };
+    }
+
 }
