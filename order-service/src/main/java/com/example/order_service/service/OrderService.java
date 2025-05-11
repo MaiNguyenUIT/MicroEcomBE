@@ -14,4 +14,5 @@ public interface OrderService {
     List<Order> getAllOrder();
     Order updateOrderStatus(Long orderId, ORDER_STATUS orderStatus);
     List<Order> getOrderBySellerId();
+    String onlinePaymentOrder(Long orderId);
 }

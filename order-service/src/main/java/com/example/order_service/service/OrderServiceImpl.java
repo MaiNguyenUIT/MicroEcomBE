@@ -1,14 +1,13 @@
 package com.example.order_service.service;
 
-import com.example.order_service.DTO.CartDTO;
-import com.example.order_service.DTO.CartItemDTO;
-import com.example.order_service.DTO.OrderDTO;
-import com.example.order_service.DTO.UserDTO;
+import com.example.order_service.DTO.*;
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.client.CartClient;
+import com.example.order_service.client.PaymentClient;
 import com.example.order_service.client.UserClient;
 import com.example.order_service.event.OrderConfirmEvent;
 import com.example.order_service.event.OrderUpdateStatusEvent;
+import com.example.order_service.event.PaymentEvent;
 import com.example.order_service.event.StockUpdateEvent;
 import com.example.order_service.exception.BadRequestException;
 import com.example.order_service.exception.NotFoundException;
@@ -37,6 +36,8 @@ public class OrderServiceImpl implements OrderService{
     private CartClient cartClient;
     @Autowired
     private UserClient userClient;
+    @Autowired
+    private PaymentClient paymentClient;
 
     private final StreamBridge streamBridge;
 
@@ -44,7 +45,6 @@ public class OrderServiceImpl implements OrderService{
         this.streamBridge = streamBridge;
     }
 
-    //Sai
     @Override
     public List<Order> createOrder(OrderDTO orderDTO) {
         CartDTO cart = cartClient.getUserCart();
@@ -95,7 +95,6 @@ public class OrderServiceImpl implements OrderService{
         }
 
         sendClearCart();
-
         return orders;
     }
 
@@ -187,5 +186,16 @@ public class OrderServiceImpl implements OrderService{
     @Override
     public List<Order> getOrderBySellerId() {
         return orderRepository.findBySellerId(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    @Override
+    public String onlinePaymentOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new NotFoundException("Order not found with id" + orderId)
+        );
+        PaymentDTO paymentDTO = new PaymentDTO();
+        paymentDTO.setOrderId(orderId);
+        paymentDTO.setOrderAmount(order.getOrderAmount());
+        return paymentClient.createPayment(paymentDTO);
     }
 }

@@ -26,6 +26,11 @@ spring:
           predicates:
             - Path=/api/order/**, /api/order/, 
               /api/admin/**, /api/admin/
+
+        - id: payment-route
+          uri: http://localhost:6066
+          predicates:
+            - Path=/api/vnpay/**, /api/vnpay/,
 app:
   security:
     public-endpoints:

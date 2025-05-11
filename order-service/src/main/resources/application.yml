@@ -6,6 +6,8 @@ spring:
     password: admin
 
   cloud:
+    function:
+      definition: paymentSuccess;paymentFail
     stream:
       default-binder: rabbit
       bindings:
@@ -21,3 +23,9 @@ spring:
         sendUpdateOrderMail-out-0:
           destination: send-updateOrderMail
           group: send-updateMail-group
+        paymentSuccess-in-0:
+          destination: payment-success
+          group: payment-success-group
+        paymentFail-in-0:
+          destination: payment-fail
+          group: payment-fail-group
