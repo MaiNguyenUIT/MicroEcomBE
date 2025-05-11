@@ -38,4 +38,9 @@ public class OrderController {
        Order apiResult = orderService.cancelOrder(id);
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
+
+    @PostMapping("/{id}")
+    public ResponseEntity<String> onlinePaymentOrder(@PathVariable Long id) throws Exception {
+        return ResponseEntity.ok(orderService.onlinePaymentOrder(id));
+    }
 }
