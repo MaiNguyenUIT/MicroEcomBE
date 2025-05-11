@@ -1,0 +1,123 @@
+# ./docker-compose.yml
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1 # Hoặc phiên bản mới nhất
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - logging_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1 # Hoặc phiên bản mới nhất
+    container_name: kafka
+    ports:
+      - "9092:9092" # Cho client bên ngoài (ví dụ: ứng dụng của bạn nếu không trong Docker)
+      - "29092:29092" # Cho client bên trong Docker network
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092 # localhost cho host, kafka cho internal
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1 # Với image confluentinc
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1 # Với image confluentinc
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1             # Với image confluentinc
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1  # Với image confluentinc
+    networks:
+      - logging_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4 # Thay bằng phiên bản bạn muốn
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true # Quan trọng, cùng với ulimits dưới đây
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Giới hạn RAM cho dev
+      - xpack.security.enabled=false # Tắt security cho dev (KHÔNG DÙNG CHO PRODUCTION)
+      - xpack.security.enrollment.enabled=false
+    ulimits: # Yêu cầu của Elasticsearch
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es_data:/usr/share/elasticsearch/data # Volume để lưu trữ dữ liệu Elasticsearch (persistent)
+    ports:
+      - "9200:9200"
+      - "9300:9300" # Cho giao tiếp giữa các node ES (nếu có nhiều node)
+    networks:
+      - logging_network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4 # Phải cùng phiên bản lớn với Elasticsearch
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: 'http://elasticsearch:9200' # Kết nối tới service elasticsearch
+      # (Nếu bật security trên ES, cần thêm user/pass)
+      # ELASTICSEARCH_USERNAME: kibana_system_user
+      # ELASTICSEARCH_PASSWORD: your_password
+    networks:
+      - logging_network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4 # Cùng phiên bản lớn với ES và Kibana
+    container_name: logstash
+    ports:
+      - "5044:5044" # (Nếu dùng Beats input trực tiếp)
+      - "9600:9600" # (Monitoring API)
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro # Mount pipeline config
+      # - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro # Nếu cần custom logstash.yml
+    depends_on:
+      - elasticsearch
+      - kafka
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m" # Giới hạn RAM cho Logstash
+    networks:
+      - logging_network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.4 # Cùng phiên bản lớn với ELK
+    container_name: filebeat
+    user: root # Để Filebeat có quyền đọc file log (cân nhắc kỹ về bảo mật)
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro # Mount file config
+      - ./spring-boot-app-logs:/usr/share/filebeat/logs_from_host:ro # Mount thư mục log của app trên host
+      # Nếu log nằm trong một volume của container khác:
+      # - named_log_volume:/usr/share/filebeat/app_container_logs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Nếu muốn Filebeat lấy metadata từ Docker (tùy chọn)
+      - filebeat_data:/usr/share/filebeat/data # Để lưu registry của Filebeat (tránh đọc lại file từ đầu)
+    depends_on:
+      - kafka
+      # - elasticsearch # Nếu Filebeat gửi trực tiếp đến ES
+      # - logstash # Nếu Filebeat gửi trực tiếp đến Logstash
+    networks:
+      - logging_network
+    command: ["--strict.perms=false"] # Nếu có vấn đề về permission
+
+volumes: # Định nghĩa volumes để dữ liệu không bị mất khi container bị xóa
+  es_data:
+    driver: local
+  filebeat_data:
+    driver: local
+
+networks: # Định nghĩa network chung cho các container giao tiếp
+  logging_network:
+    driver: bridge
