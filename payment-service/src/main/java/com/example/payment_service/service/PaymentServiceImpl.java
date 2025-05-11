@@ -112,6 +112,12 @@ public class PaymentServiceImpl implements PaymentService{
             streamBridge.send("paymentSuccess-out-0", paymentEvent);
             return "Thanh toán thành công!";
         } else {
+            Payment payment = new Payment();
+            payment.setPaymentStatus(PAYMENT_STATUS.FAIL);
+            payment.setOrderId(queryParams.get("vnp_TxnRef"));
+            payment.setAmount(queryParams.get("vnp_Amount"));
+            payment.setMethod("VNPay");
+            paymentRepository.save(payment);
             streamBridge.send("paymentFail-out-0", PAYMENT_STATUS.FAIL);
             return "Thanh toán thất bại!";
         }
