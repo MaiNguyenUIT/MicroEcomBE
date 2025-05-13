@@ -1,0 +1,48 @@
+#=========================== Filebeat inputs =============================
+filebeat.inputs:
+- type: filestream
+  id: my-service-logs
+  enabled: true
+  paths:
+    - /usr/share/filebeat/logs_from_host/*.log
+  parsers:
+    - ndjson: # Hoặc json, tùy thuộc định dạng log của bạn là từng dòng JSON hay một mảng JSON lớn
+        keys_under_root: true
+        add_error_key: true
+        # message_key: 'log' # Nếu log JSON của bạn có một key chính chứa thông điệp
+  fields:
+    service: user-service # Gắn thêm thông tin service vào log
+  fields_under_root: true
+
+#==================== Filebeat processors (Tùy chọn) ====================
+#processors:
+#  - add_host_metadata: ~
+#  - add_cloud_metadata: ~
+#  - add_docker_metadata: ~
+
+#==================== Filebeat outputs ===================================
+output.kafka:
+  hosts: ["kafka-kraft:29092"] # Trỏ đến Kafka service và port internal
+  topic: 'application-logs'    # Topic để gửi log tới
+  # partition.round_robin: # Phân phối message đều qua các partition
+  #   reachable_only: false
+  required_acks: 1           # Chờ xác nhận từ leader của partition
+  compression: gzip          # Nén message
+  # max_message_bytes: 1000000 # Mặc định
+  # codec.json:              # Nếu bạn muốn Filebeat gửi event dưới dạng JSON thuần túy
+  #   pretty: false
+
+#==================== General Filebeat settings ==========================
+#queue.mem:
+#  events: 4096
+
+#max_procs: 4 # Số CPU core Filebeat có thể dùng
+
+#==================== Filebeat Logging ===================================
+logging.level: info # Mức log cho Filebeat (đổi thành debug nếu cần gỡ lỗi)
+logging.to_files: false
+logging.to_stderr: true # Ghi log của Filebeat ra console để docker logs bắt được
+
+#==================== HTTP endpoint for monitoring (Tùy chọn) ============
+#http.enabled: true
+#http.port: 5066

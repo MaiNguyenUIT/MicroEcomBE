@@ -1,0 +1,123 @@
+services:
+  kafka-kraft: # Tên service vẫn là kafka-kraft
+    image: apache/kafka:3.7.1 # <<< THAY ĐỔI IMAGE
+    container_name: kafka-kraft
+    hostname: kafka-kraft # Đặt hostname để dễ tham chiếu trong network
+    ports:
+      # Đổi port ánh xạ ra máy host thành 9099
+      - "9099:9092" # Host port 9099 maps to container port 9092 (PLAINTEXT_HOST listener)
+    environment:
+      # --- KRaft Configuration ---
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      # kafka-kraft là hostname/tên service của node này
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-kraft:9093' 
+      
+      # <<< THAY ĐỔI TÊN BIẾN VÀ YÊU CẦU GIÁ TRỊ BASE64 UUID >>>
+      KAFKA_CLUSTER_ID: 'YOUR_BASE64_ENCODED_CLUSTER_ID' # THAY THẾ BẰNG UUID BASE64 BẠN TẠO RA
+
+      # --- Listener Configuration for KRaft ---
+      # Container lắng nghe trên port 9092 cho PLAINTEXT_HOST, 29092 cho PLAINTEXT_INTERNAL, 9093 cho CONTROLLER
+      KAFKA_LISTENERS: 'PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093'
+      # Đổi advertised listener cho client bên ngoài thành port 9099
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9099,PLAINTEXT_INTERNAL://kafka-kraft:29092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT_INTERNAL'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      # --- Các cấu hình khác ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # <<< LOẠI BỎ BIẾN CỦA CONFLUENT >>>
+      # KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1 (Đã bỏ)
+      # KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1 (Đã bỏ)
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data' # Đường dẫn lưu trữ dữ liệu Kafka trong container
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - logging_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - logging_network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: 'http://elasticsearch:9200'
+    networks:
+      - logging_network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.4
+    container_name: logstash
+    ports:
+      - "5044:5044" # Cổng cho Beats input
+      - "9600:9600" # Cổng cho API giám sát (nếu cần)
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    depends_on:
+      - elasticsearch
+      - kafka-kraft # Logstash có thể đọc từ Kafka
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    networks:
+      - logging_network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.4
+    container_name: filebeat
+    user: root # Cần quyền root để đọc docker.sock và log files từ host
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro # Cấu hình Filebeat
+      - ../user-service/logs:/usr/share/filebeat/logs_from_host:ro # Log từ service bên ngoài
+      - ../user-service/logs:/app/internal_logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Để Filebeat đọc log từ các container khác (nếu cấu hình)
+      - filebeat_data:/usr/share/filebeat/data # Dữ liệu trạng thái của Filebeat
+      
+    depends_on:
+      - kafka-kraft # Filebeat có thể gửi log tới Kafka
+    networks:
+      - logging_network
+    command: ["--strict.perms=false"] # Tắt kiểm tra quyền nghiêm ngặt cho file config
+
+volumes:
+  es_data:
+    driver: local
+  filebeat_data:
+    driver: local
+  kafka_data:
+    driver: local
+
+networks:
+  logging_network:
+    driver: bridge
