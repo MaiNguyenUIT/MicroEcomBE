@@ -1,0 +1,24 @@
+spring:
+  cloud:
+    function:
+      definition: sendToGetFullConfirmOrder
+    stream:
+      default-binder: rabbit
+      bindings:
+        sendToGetFullConfirmOrder-in-0:
+          destination: send-ToGetFullConfirmOrder
+          group: send-ToGetFullConfirmOrder-group
+        sendConfirmOrderMailSuccess-out-0:
+          destination: send-ConfirmOrderMailSuccess
+          group: send-ConfirmOrderMailSuccess-group
+        sendConfirmOrderMailFail-out-0:
+          destination: send-ConfirmOrderMailFail
+          group: send-ConfirmOrderMailSuccess-group
+        sendConfirmOrderMail-out-0:
+          destination: send-confirmOrderMail
+          group: send-confirmMail-group
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin

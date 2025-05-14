@@ -7,7 +7,7 @@ spring:
 
   cloud:
     function:
-      definition: paymentSuccess;paymentFail
+      definition: paymentSuccess;paymentFail;stockUpdateSuccess;stockUpdateFail;clearCartSuccess
     stream:
       default-binder: rabbit
       bindings:
@@ -23,9 +23,21 @@ spring:
         sendUpdateOrderMail-out-0:
           destination: send-updateOrderMail
           group: send-updateMail-group
+        sendToGetFullConfirmOrder-out-0:
+          destination: send-ToGetFullConfirmOrder
+          group: send-ToGetFullConfirmOrder-group
         paymentSuccess-in-0:
           destination: payment-success
           group: payment-success-group
         paymentFail-in-0:
           destination: payment-fail
           group: payment-fail-group
+        stockUpdateSuccess-in-0:
+          destination: stockUpdate-success
+          group: stockUpdate-success-group
+        stockUpdateFail-in-0:
+          destination: stockUpdate-fail
+          group: stockUpdate-fail-group
+        clearCartSuccess-in-0:
+          destination: clearCart-success
+          group: clearCart-success-group

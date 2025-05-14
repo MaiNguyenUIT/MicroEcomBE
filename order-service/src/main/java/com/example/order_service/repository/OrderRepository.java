@@ -15,4 +15,5 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.orderDateTime >= :startDate AND o.orderDateTime <= :endDate AND o.orderStatus = 'SUCCESS'")
     List<Order> findCompletedOrdersInRange(@Param("startDate") LocalDateTime startDate,
                                            @Param("endDate") LocalDateTime endDate);
+    List<Order> findByOrderGroupId(String groupId);
 }

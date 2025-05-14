@@ -26,6 +26,7 @@ public class Order {
     private int orderAmount;
 
     private String sellerId;
+    private String orderGroupId;
 
     @Enumerated(EnumType.STRING)
     private ORDER_STATUS orderStatus = ORDER_STATUS.PENDING;
