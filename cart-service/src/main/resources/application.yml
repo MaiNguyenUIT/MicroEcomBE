@@ -8,6 +8,9 @@ spring:
         clearCart-in-0:
           destination: clear-cart
           group: clear-cart-group
+        clearCartSuccess-out-0:
+          destination: clearCart-success
+          group: clearCart-success-group
   rabbitmq:
     host: localhost
     port: 5672

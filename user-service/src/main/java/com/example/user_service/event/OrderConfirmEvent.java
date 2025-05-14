@@ -1,6 +1,6 @@
-package com.example.order_service.event;
+package com.example.user_service.event;
 
-import com.example.order_service.ENUM.ORDER_STATUS;
+import com.example.user_service.dto.ORDER_STATUS;
 import lombok.Data;
 
 @Data

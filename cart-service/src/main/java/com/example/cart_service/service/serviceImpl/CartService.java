@@ -216,12 +216,4 @@ public Cart updateCartInfor(Cart cart) {
     cart.setTotalPrice(totalPrice);
     return cart;
 }
-
-@Bean
-public Consumer<String> clearCart(){
-    return clearString -> {
-        cartRepository.deleteByuserId(clearString);
-        System.out.println("📥 Nhận message từ RabbitMQ: " + clearString);
-    };
-}
 }

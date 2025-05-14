@@ -14,7 +14,10 @@ import com.example.order_service.exception.NotFoundException;
 import com.example.order_service.mapper.OrderMapper;
 import com.example.order_service.model.Order;
 import com.example.order_service.model.OrderItem;
+import com.example.order_service.model.OrderTracker;
+import com.example.order_service.model.ProductQuantity;
 import com.example.order_service.repository.OrderRepository;
+import com.example.order_service.repository.OrderTrackerRepository;
 import org.apache.catalina.User;
 import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +42,8 @@ public class OrderServiceImpl implements OrderService{
     private UserClient userClient;
     @Autowired
     private PaymentClient paymentClient;
+    @Autowired
+    private OrderTrackerRepository orderTrackerRepository;
 
     private final StreamBridge streamBridge;
 
@@ -58,6 +64,8 @@ public class OrderServiceImpl implements OrderService{
 
         UserDTO userDTO = userClient.getUserFromJwtToken();
         List<Order> orders = new ArrayList<>();
+        StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
+        String orderGroupId = UUID.randomUUID().toString();
 
         for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
             String sellerId = entry.getKey();
@@ -76,37 +84,38 @@ public class OrderServiceImpl implements OrderService{
             int total = 0;
 
             for (CartItemDTO item : sellerItems) {
-                sendStockUpdate(item.getProductId(), item.getQuantity());
-
                 OrderItem orderItem = new OrderItem();
                 orderItem.setProductId(item.getProductId());
                 orderItem.setQuantity(item.getQuantity());
                 orderItem.setOrder(order);
                 order.getOrderItems().add(orderItem);
-
                 total += item.getPrice();
+                ProductQuantity productQuantity = new ProductQuantity();
+                productQuantity.setProductId(item.getProductId());
+                productQuantity.setQuantity(item.getQuantity());
+                stockUpdateEvent.getProductQuantities().add(productQuantity);
             }
 
+
             order.setOrderAmount(total);
+            order.setOrderGroupId(orderGroupId);
             Order createOrder = orderRepository.save(order);
-            OrderConfirmEvent orderConfirmEvent = buildConfirmEvent(userDTO, createOrder.getId(), createOrder.getOrderStatus(), createOrder.getOrderAmount());
-            sendConfirmEmail(orderConfirmEvent);
+            stockUpdateEvent.setOrderId(createOrder.getId());
+            stockUpdateEvent.setOrderGroupId(orderGroupId);
+
+            OrderTracker orderTracker = new OrderTracker();
+            orderTracker.setId(createOrder.getId().toString() + orderGroupId);
+            orderTracker.setOrderGroupId(orderGroupId);
+            orderTracker.setOrderId(createOrder.getId());
+            orderTracker.setStatus("fail"+orderGroupId);
+            orderTrackerRepository.save(orderTracker);
+            //send event to product service
+            sendStockUpdate(stockUpdateEvent);
+
             orders.add(createOrder);
         }
 
-        sendClearCart();
         return orders;
-    }
-
-    public OrderConfirmEvent buildConfirmEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus, int orderAmount){
-        OrderConfirmEvent orderConfirmEvent = new OrderConfirmEvent();
-        orderConfirmEvent.setOrderStatus(orderStatus);
-        orderConfirmEvent.setOrderAmount(orderAmount);
-        orderConfirmEvent.setUserEmail(userDTO.getEmail());
-        orderConfirmEvent.setUserPhone(userDTO.getPhone());
-        orderConfirmEvent.setUserDisplayName(userDTO.getDisplayName());
-        orderConfirmEvent.setId(orderId);
-        return orderConfirmEvent;
     }
 
     public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
@@ -120,10 +129,7 @@ public class OrderServiceImpl implements OrderService{
         return orderUpdateStatusEvent;
     }
 
-    public void sendStockUpdate(String productId, int quantity) {
-        StockUpdateEvent event = new StockUpdateEvent();
-        event.setProductId(productId);
-        event.setQuantity(quantity);
+    public void sendStockUpdate(StockUpdateEvent event) {
         streamBridge.send("stockUpdate-out-0", event);
     }
 

@@ -8,6 +8,12 @@ spring:
         stockUpdate-in-0:
           destination: stock-update
           group: stock-update-group
+        stockUpdateSuccess-out-0:
+          destination: stockUpdate-success
+          group: stockUpdate-success-group
+        stockUpdateFail-out-0:
+          destination: stockUpdate-fail
+          group: stockUpdate-fail-group
   rabbitmq:
     host: localhost
     port: 5672
