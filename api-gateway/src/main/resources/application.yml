@@ -37,3 +37,5 @@ app:
       - /api/auth/**
       - /api/product/**
       - /api/product
+      - /api/category
+      - /api/category/**

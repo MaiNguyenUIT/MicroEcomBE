@@ -10,6 +10,7 @@ public class Category {
     @Id
     private String id;
     private String title;
+    private String image;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

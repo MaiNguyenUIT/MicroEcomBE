@@ -24,6 +24,7 @@ public class CategoryServiceImpl implements CategoryService{
         }
         Category category = CategoryMapper.INSTANCE.toEntity(categoryDTO);
         category.setCreatedAt(LocalDateTime.now());
+        category.setImage(categoryDTO.getImage());
         return CategoryMapper.INSTANCE.toDTO(categoryRepository.save(category));
     }
 
