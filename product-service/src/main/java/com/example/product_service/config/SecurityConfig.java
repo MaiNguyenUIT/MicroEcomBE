@@ -22,7 +22,7 @@ public class SecurityConfig {
         http.sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(Authorize -> Authorize
                         .requestMatchers("/api/product/**").permitAll()
-                        .requestMatchers(("/api/category/**")).permitAll()
+                        .requestMatchers("/api/category/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(new CustomSecurityContextFilter(), BasicAuthenticationFilter.class)
                 .csrf(csrt -> csrt.disable());
