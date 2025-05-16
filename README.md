@@ -10,6 +10,7 @@ This project is a microservice-based e-commerce system architecture designed usi
 
 - **Spring Boot** - For developing microservices
 - **Spring Cloud Gateway** - For API routing and gateway
+- **Spring Cloud Config** – For centralized configuration management
 - **Kafka** - For logging and message streaming
 - **RabbitMQ** - For inter-service communication
 - **MongoDB, MySQL, Redis** - As various microservice data stores
