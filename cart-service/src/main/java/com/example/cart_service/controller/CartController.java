@@ -45,7 +45,7 @@ public class CartController {
         return new ResponseEntity<>("Clear cart successfully", HttpStatus.OK);
     }
 
-    @PutMapping()
+    @DeleteMapping()
     public ResponseEntity<ApiResponse<Cart>> deleteItemFromCart(@RequestParam String productId) throws Exception {
         Cart cart = cartService.deleteItemFromCart(productId);
         ApiResponse<Cart> apiResponse = ApiResponse.<Cart>builder()
