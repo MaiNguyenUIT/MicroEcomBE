@@ -2,6 +2,7 @@ package com.example.cart_service.controller;
 
 import com.example.cart_service.DTO.CartItemDTO;
 import com.example.cart_service.DTO.CartResponse;
+import com.example.cart_service.DTO.UpdateQuantityDTO;
 import com.example.cart_service.model.Cart;
 import com.example.cart_service.service.Service.CartService;
 import com.example.cart_service.utils.ApiResponse;
@@ -32,14 +33,14 @@ public class CartController {
         return new ResponseEntity<>(cartService.getCartByUserId(), HttpStatus.OK);
     }
 
-    @DeleteMapping()
+    @DeleteMapping("/user")
     public ResponseEntity<String> clearUserCart() throws Exception {
         cartService.clearUserCart();
         return new ResponseEntity<>("Clear cart successfully", HttpStatus.OK);
     }
 
-    @DeleteMapping()
-    public ResponseEntity<ApiResponse<Cart>> deleteItemFromCart(@RequestParam String productId) throws Exception {
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<ApiResponse<Cart>> deleteItemFromCart(@PathVariable String productId) throws Exception {
         Cart cart = cartService.deleteItemFromCart(productId);
         ApiResponse<Cart> apiResponse = ApiResponse.<Cart>builder()
                 .status(200)
@@ -50,9 +51,8 @@ public class CartController {
     }
 
     @PutMapping("/quantity")
-    public ResponseEntity<Cart> updateItemQuantity(@RequestParam String productId,
-                                                   @RequestBody int quantity) throws Exception {
-        return new ResponseEntity<>(cartService.updateItemQuantity(productId, quantity), HttpStatus.OK);
+    public ResponseEntity<Cart> updateItemQuantity(@RequestBody UpdateQuantityDTO updateQuantityDTO) throws Exception {
+        return new ResponseEntity<>(cartService.updateItemQuantity(updateQuantityDTO.getProductId(), updateQuantityDTO.getQuantity()), HttpStatus.OK);
     }
 
     @PutMapping("/increase")

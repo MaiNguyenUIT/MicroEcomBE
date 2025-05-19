@@ -137,6 +137,7 @@ public Cart deleteItemFromCart(String productId) {
     Cart cart = cartRepository.findByuserId(userId)
             .orElseThrow(() -> new NotFoundException("Cart not found"));
     cart.getCartItems().removeIf(item -> item.getProductId().equals(productId));
+    System.out.println(productId);
     return cartRepository.save(updateCartInfor(cart));
 }
 
