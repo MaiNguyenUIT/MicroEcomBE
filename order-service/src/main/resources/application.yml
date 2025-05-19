@@ -26,6 +26,7 @@ spring:
         sendToGetFullConfirmOrder-out-0:
           destination: send-ToGetFullConfirmOrder
           group: send-ToGetFullConfirmOrder-group
+
         paymentSuccess-in-0:
           destination: payment-success
           group: payment-success-group
