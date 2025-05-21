@@ -1,0 +1,19 @@
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
+
+  cloud:
+    function:
+      definition:
+    stream:
+      default-binder: rabbit
+      bindings:
+        updateAverageRatingAdd-out-0:
+          destination: update-AverageRatingAdd
+          group: update-AverageRatingAdd-group
+        updateAverageRatingDelete-out-0:
+          destination: update-AverageRatingDelete
+          group: update-AverageRatingDelete-group

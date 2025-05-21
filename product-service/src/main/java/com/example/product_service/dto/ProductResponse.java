@@ -18,4 +18,6 @@ public class ProductResponse {
     private PRODUCT_STATE productState;
     private String ownerId;
     private int sold;
+    private int totalRating;
+    private double averageRating;
 }

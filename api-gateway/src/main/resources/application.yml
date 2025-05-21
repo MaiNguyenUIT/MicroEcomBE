@@ -31,6 +31,11 @@ spring:
           uri: http://localhost:6066
           predicates:
             - Path=/api/vnpay/**, /api/vnpay/,
+
+        - id: rating-route
+          uri: http://localhost:6067
+          predicates:
+            - Path=/api/rating/**, /api/rating/,
 app:
   security:
     public-endpoints:
@@ -39,3 +44,4 @@ app:
       - /api/product
       - /api/category
       - /api/category/**
+      - /api/rating/all
