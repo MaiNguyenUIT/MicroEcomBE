@@ -1,7 +1,7 @@
 spring:
   cloud:
     function:
-      definition: stockUpdate
+      definition: stockUpdate;updateAverageRatingAdd;updateAverageRatingDelete
     stream:
       default-binder: rabbit
       bindings:
@@ -14,6 +14,13 @@ spring:
         stockUpdateFail-out-0:
           destination: stockUpdate-fail
           group: stockUpdate-fail-group
+        updateAverageRatingAdd-in-0:
+          destination: update-AverageRatingAdd
+          group: update-AverageRatingAdd-group
+        updateAverageRatingDelete-in-0:
+          destination: update-AverageRatingDelete
+          group: update-AverageRatingDelete-group
+
   rabbitmq:
     host: localhost
     port: 5672

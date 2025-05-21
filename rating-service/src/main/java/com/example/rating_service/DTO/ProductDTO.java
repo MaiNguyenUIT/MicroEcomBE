@@ -1,14 +1,11 @@
-package com.example.product_service.model;
+package com.example.rating_service.DTO;
 
-import com.example.product_service.ENUM.PRODUCT_STATE;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 
 import java.util.List;
 
 @Data
-public class Product {
-    @Id
+public class ProductDTO {
     private String id;
     private String name;
     private String categoryId;
@@ -18,7 +15,6 @@ public class Product {
     private int price;
     private String description;
     private List<String> image;
-    private PRODUCT_STATE productState;
     private String ownerId;
     private int totalRating = 0;
     private double averageRating = 0;
