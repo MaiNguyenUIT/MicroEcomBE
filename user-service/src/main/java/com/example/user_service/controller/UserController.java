@@ -243,4 +243,9 @@ public class UserController {
             MDC.clear();
         }
     }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<List<User>> getUserByUserIds(@RequestBody List<String> ids){
+        return ResponseEntity.ok(userService.getUserByIds(ids));
+    }
 }

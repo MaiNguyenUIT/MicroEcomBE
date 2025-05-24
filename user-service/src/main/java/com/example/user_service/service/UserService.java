@@ -14,4 +14,5 @@ public interface UserService {
     List<User> getAllSeller();
     public User updateUserInformation(UserInforDTO userInfor, User user);
     public User blockUser(String userId);
+    List<User> getUserByIds(List<String> userIds);
 }

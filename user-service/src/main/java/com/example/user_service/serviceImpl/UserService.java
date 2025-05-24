@@ -115,5 +115,12 @@ public class UserService implements com.example.user_service.service.UserService
         );
         user.setBlock(true);
         return userRepository.save(user);
-    };
+    }
+
+    @Override
+    public List<User> getUserByIds(List<String> userIds) {
+        System.out.println("Get user by ids....");
+        return userRepository.findAllById(userIds);
+    }
+
 }
