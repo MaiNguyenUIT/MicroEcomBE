@@ -4,7 +4,8 @@ This project is a microservice-based e-commerce system architecture designed usi
 
 ## 📌 Architecture Overview
 
-![E-commerce System Architecture](https://github.com/user-attachments/assets/3557c856-41c5-4982-b67a-f18ba4a81c91)
+![E-commerce System Architecture](https://github.com/user-attachments/assets/0b2c6967-b4f1-4fec-a755-a4069754260e)
+
 
 ## 🔧 Technologies Used
 
