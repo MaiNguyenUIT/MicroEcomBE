@@ -8,7 +8,6 @@ from ai_processor import EnhancedAIProcessor
 from data_record import DataRecord
 from typing import Dict, List
 
-
 class EnhancedAIChatbot:
     """Enhanced AI Chatbot với VectorDB và RAG"""
     

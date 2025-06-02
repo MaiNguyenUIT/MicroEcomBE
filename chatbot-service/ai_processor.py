@@ -7,7 +7,9 @@ from data_querier import EnhancedDataQuerier
 from huggingface_hub import InferenceClient
 from decimal import Decimal
 from typing import Any
+from dotenv import load_dotenv
 
+load_dotenv() 
 class EnhancedAIProcessor:
     """Enhanced AI Processor với RAG capabilities"""
     
