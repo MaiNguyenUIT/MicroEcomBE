@@ -120,6 +120,11 @@
 			<artifactId>cloudinary-http44</artifactId>
 			<version>1.34.0</version>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+			<version>4.2.1</version>
+		</dependency>
 
 	</dependencies>
 	<dependencyManagement>
