@@ -93,7 +93,7 @@ public class CartService implements com.example.cart_service.service.Service.Car
                 cartItemResponse.setRegularPrice(productDTO.getRegularPrice());
                 cartItemResponse.setProductId(productDTO.getId());
                 cartItemResponse.setProductName(productDTO.getName());
-
+                cartItemResponse.setOwnerId(productDTO.getOwnerId());
                 cartItemResponse.setQuantity(cartItem.getQuantity());
                 cartItemResponse.setAddedAt(cartItem.getAddedAt());
                 cartItemResponses.add(cartItemResponse);

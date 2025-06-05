@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @FeignClient(name = "order-service",
-        url = "http://localhost:4444/api/order",
+        path = "/api/order",
         configuration = FeignConfig.class
 )
 public interface OrderClient {
