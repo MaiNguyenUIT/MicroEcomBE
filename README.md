@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/75d1f449-81e5-4784-9835-edbe7a0e99b7)# 🛒 E-commerce Microservices System
+🛒 E-commerce Microservices System
 
 This project is a microservice-based e-commerce system architecture designed using Spring Boot, Spring Cloud Gateway, RabbitMQ, and Kafka.
 
