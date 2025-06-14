@@ -43,7 +43,7 @@ public class CouponController {
     @PatchMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SELLER')")
     public ResponseEntity<CouponResponseDTO> updateCoupon(
-            @PathVariable String id,
+            @PathVariable Long id,
             @RequestBody CouponUpdateRequestDTO request) {
 
 
@@ -55,7 +55,7 @@ public class CouponController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SELLER')")
     public ResponseEntity<Void> softDeleteCoupon(
-            @PathVariable String id) {
+            @PathVariable Long id) {
 
         
         couponService.softDeleteCoupon(id);

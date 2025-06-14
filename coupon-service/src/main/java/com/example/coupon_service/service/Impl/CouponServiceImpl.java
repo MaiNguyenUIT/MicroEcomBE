@@ -82,12 +82,11 @@ public class CouponServiceImpl implements CouponService {
             throw new IllegalArgumentException("Creator User ID and role must be provided.");
         }
 
-        CouponCreationDetails couponDetails = getCouponCreationDetails(creatorUserId, creatorRole);
+        CouponCreationDetails couponDetails = getCouponCreationDetails(creatorRole);
 
         return generateAndSaveCoupons(
                 request,
                 couponDetails.effectiveCouponType,
-                couponDetails.effectiveSellerId,
                 creatorUserId,
                 getCodeConfigForRole(creatorRole)
         );
@@ -95,23 +94,19 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
-    public CouponResponseDTO updateCoupon(String id, CouponUpdateRequestDTO updateDTO) {
+    public CouponResponseDTO updateCoupon(Long id, CouponUpdateRequestDTO updateDTO) {
         String updaterUserId = SecurityUtils.getCurrentUserId();
         UserRole updaterRole = SecurityUtils.getCurrentUserRole();
 
-        if (id == null || id.trim().isEmpty()) {
+        if (id == null || id <= 0) {
             throw new BadRequestException("Coupon ID must be provided.");
         }        
         Coupon coupon = couponRepository.findById(id).orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
         
-        if (UserRole.ADMIN.equals(updaterRole)) {
-
-        } else if (UserRole.SELLER.equals(updaterRole)) {
-            if (coupon.getCreatedByUserId() == null || !coupon.getCreatedByUserId().equals(updaterUserId)) {
+        if (UserRole.SELLER.equals(updaterRole)) {
+            if (!coupon.getCreatedByUserId().equals(updaterUserId)) {
                 throw new IllegalArgumentException("Seller is not authorized to update coupons not created by them.");
             }
-        } else {
-            throw new IllegalArgumentException("User role " + updaterRole + " is not authorized to update coupons.");
         }
 
         couponMapper.toEntity(updateDTO, coupon);
@@ -121,23 +116,19 @@ public class CouponServiceImpl implements CouponService {
     
     @Override
     @Transactional
-    public void softDeleteCoupon(String id) {
+    public void softDeleteCoupon(Long id) {
         String deleterUserId = SecurityUtils.getCurrentUserId();
         UserRole deleterRole = SecurityUtils.getCurrentUserRole();
 
         Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(id)
                                 .orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
        
-        if (UserRole.ADMIN.equals(deleterRole)) {
-        }
-        else if (UserRole.SELLER.equals(deleterRole)) {
+        if (UserRole.SELLER.equals(deleterRole)) {
             if (coupon.getCreatedByUserId() == null || !coupon.getCreatedByUserId().equals(deleterUserId)) {
                 throw new IllegalArgumentException("Seller is not authorized to delete coupons not created by them.");
             }
         }
-        else {
-            throw new IllegalArgumentException("User role " + deleterRole + " is not authorized to delete coupons.");
-        }
+
 
         if (coupon.getStatus() == DiscountStatus.ACTIVE || coupon.getStatus() == DiscountStatus.USED_UP) {
             throw new BadRequestException("Cannot delete coupon in current status (" + coupon.getStatus() + "). Please change its status first.");
@@ -159,16 +150,13 @@ public class CouponServiceImpl implements CouponService {
         List<Coupon> coupons;
 
         if (UserRole.ADMIN.equals(getorRole)) {
-            coupons = couponRepository.findBySellerIdNullAndIsDeletedFalse();
+            coupons = couponRepository.findBycouponTypeAndIsDeletedFalse(CouponType.GLOBAL);
         }
-        else if (UserRole.SELLER.equals(getorRole)) {
+        else {
             if (getorUserId == null) {
                 throw new IllegalArgumentException("Seller User ID must be provided for seller role.");
             }
-            coupons = couponRepository.findBySellerIdAndIsDeletedFalse(getorUserId);
-        }
-        else {
-            throw new IllegalArgumentException("Invalid user role: " + getorRole);
+            coupons = couponRepository.findBycreatedByUserIdAndIsDeletedFalse(getorUserId);
         }
         
         return coupons.stream()
@@ -180,28 +168,23 @@ public class CouponServiceImpl implements CouponService {
 
     private static class CouponCreationDetails {
         CouponType effectiveCouponType;
-        String effectiveSellerId;
 
-        CouponCreationDetails(CouponType effectiveCouponType, String effectiveSellerId) {
+        CouponCreationDetails(CouponType effectiveCouponType) {
             this.effectiveCouponType = effectiveCouponType;
-            this.effectiveSellerId = effectiveSellerId;
         }
     }
 
-    private CouponCreationDetails getCouponCreationDetails(String creatorUserId, UserRole creatorRole) {
+    private CouponCreationDetails getCouponCreationDetails(UserRole creatorRole) {
         if (UserRole.ADMIN.equals(creatorRole)) {
-            return new CouponCreationDetails(CouponType.GLOBAL, null);
-        } else if (UserRole.SELLER.equals(creatorRole)) {
-            return new CouponCreationDetails(CouponType.SELLER_SPECIFIC, creatorUserId);
+            return new CouponCreationDetails(CouponType.GLOBAL);
         } else {
-            throw new IllegalArgumentException("Invalid user role: " + creatorRole);
+            return new CouponCreationDetails(CouponType.SELLER_SPECIFIC);
         }
     }
 
     private CouponResponseDTO generateAndSaveCoupons(
             CouponCreateRequestDTO request,
             CouponType effectiveCouponType,
-            String effectiveSellerId,
             String creatorUserId,
             CodeGenerationConfig codeConfig
     ) {
@@ -211,7 +194,6 @@ public class CouponServiceImpl implements CouponService {
         Coupon newCoupon = couponMapper.toEntity(request);
 
         newCoupon.setCouponType(effectiveCouponType);
-        newCoupon.setSellerId(effectiveSellerId);
         newCoupon.setCreatedByUserId(creatorUserId);
         newCoupon.setCreatedAt(LocalDateTime.now());
         newCoupon.setIsDeleted(false);

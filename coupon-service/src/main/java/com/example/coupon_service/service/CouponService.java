@@ -13,8 +13,8 @@ import java.util.Optional;
 public interface CouponService {
 
     public CouponResponseDTO createCoupon(CouponCreateRequestDTO request);
-    public CouponResponseDTO updateCoupon(String id, CouponUpdateRequestDTO updateDTO);
-    public void softDeleteCoupon(String code);
+    public CouponResponseDTO updateCoupon(Long id, CouponUpdateRequestDTO updateDTO);
+    public void softDeleteCoupon(Long id);
     // public CouponResponseDTO applyCoupon(String code, Long userId);
     // public Optional<Coupon> getCouponById(Long id);
     // public Optional<Coupon> getCouponByCode(String code);

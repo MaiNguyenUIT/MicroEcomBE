@@ -24,7 +24,7 @@ import java.util.List;
 public class Coupon {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private String id;
+    private Long id;
 
     @Column(unique = true, nullable = false, length = 50)
     private String code;
@@ -54,10 +54,6 @@ public class Coupon {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CouponType couponType;
-
-    @Column(nullable = true)
-    private String sellerId;
-
 
     @Column(nullable = true)
     private String createdByUserId;

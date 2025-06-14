@@ -20,6 +20,7 @@ import org.mapstruct.factory.Mappers;
 public interface CouponMapper {
 
     @Mapping(target = "discountPercentage", source = "discount.value")
+    @Mapping(target = "sellerId", source = "createdByUserId")
     CouponResponseDTO toResponseDTO(Coupon coupon);
 
     @Mapping(target = "discount", expression = "java(new Discount(dto.getDiscountPercentage()))")

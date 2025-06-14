@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CouponResponseDTO {
 
-    private String id;
+    private Long id;
 
     private String code;
 
