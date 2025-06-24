@@ -123,6 +123,6 @@ public class CommentServiceImpl implements CommentService{
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Comment is not exist with id: " + id));
         comment.getReplyComment().add(replyComment);
-        return null;
+        return commentRepository.save(comment);
     }
 }

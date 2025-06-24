@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.List;
 
 @FeignClient(name = "cart-service",
-        url = "http://localhost:4444/api/cart",
+        path = "/api/cart",
         configuration = FeignConfig.class
 )
 public interface CartClient {
