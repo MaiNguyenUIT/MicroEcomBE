@@ -2,6 +2,7 @@ package com.example.order_service.model;
 
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.ENUM.PAYMENT_METHOD;
+import com.example.order_service.ENUM.CouponType;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -31,7 +32,10 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private ORDER_STATUS orderStatus = ORDER_STATUS.PENDING;
 
-    private String coupon;
+    private String couponId;
+    private String code;
+    @Enumerated(EnumType.STRING)
+    private CouponType couponType;
 
     @Embedded
     private ShippingAddress shippingAddress;

@@ -1,8 +1,10 @@
 package com.example.order_service.service;
 
 import com.example.order_service.DTO.*;
+import com.example.order_service.ENUM.CouponType;
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.client.CartClient;
+import com.example.order_service.client.CouponClient;
 import com.example.order_service.client.PaymentClient;
 import com.example.order_service.client.UserClient;
 import com.example.order_service.event.OrderConfirmEvent;
@@ -15,9 +17,11 @@ import com.example.order_service.mapper.OrderMapper;
 import com.example.order_service.model.Order;
 import com.example.order_service.model.OrderItem;
 import com.example.order_service.model.OrderTracker;
+import com.example.order_service.model.CouponItem;
 import com.example.order_service.model.ProductQuantity;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.repository.OrderTrackerRepository;
+import com.example.order_service.utils.CouponMapperUtil;
 import org.apache.catalina.User;
 import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +47,8 @@ public class OrderServiceImpl implements OrderService{
     @Autowired
     private PaymentClient paymentClient;
     @Autowired
+    private CouponClient couponClient;
+    @Autowired
     private OrderTrackerRepository orderTrackerRepository;
 
     private final StreamBridge streamBridge;
@@ -64,15 +70,29 @@ public class OrderServiceImpl implements OrderService{
 
         UserDTO userDTO = userClient.getUserFromJwtToken();
         List<Order> orders = new ArrayList<>();
+        List<CouponItem> coupons = orderDTO.getCoupons();
+        CouponsRequest couponsCheckRequest = CouponMapperUtil.toCouponsRequest(coupons);
+        CouponType couponType = orderDTO.getCouponType();
         StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
         String orderGroupId = UUID.randomUUID().toString();
+        
+        if (!couponClient.checkCoupons(couponsCheckRequest)) {
+            throw new BadRequestException("Invalid coupons provided");
+        }
+
 
         for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
             String sellerId = entry.getKey();
             List<CartItemDTO> sellerItems = entry.getValue();
-
+            CouponItem couponItem = coupons.get(0);
+            
+            if(couponType != CouponType.GLOBAL)
+                couponItem = extractCouponItemBySeller(coupons, sellerId);
+            
             Order order = new Order();
-            order.setCoupon(orderDTO.getCoupon());
+            order.setCouponId(couponItem.getCouponId());
+            order.setCode(couponItem.getCode());
+            order.setCouponType(couponItem.getType());
             order.setShippingAddress(orderDTO.getShippingAddress());
             order.setPaymentMethod(orderDTO.getPaymentMethod());
             order.setOrderDateTime(orderDTO.getOrderDateTime());
@@ -118,6 +138,24 @@ public class OrderServiceImpl implements OrderService{
         return orders;
     }
 
+    
+    public CouponItem extractCouponItemBySeller(List<CouponItem> coupons, String sellerId) {
+        if (coupons == null || coupons.isEmpty()) {
+            return null;
+        }
+
+        CouponItem couponSearchItem = null;
+        for (CouponItem couponItem : coupons) {
+            if (couponItem.getSellerId() != null) {
+                if(!couponItem.getSellerId().equals(sellerId))
+                    continue;
+                couponSearchItem = couponItem;
+                break;
+            }
+        }
+        return couponSearchItem;
+    }
+
     public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
         OrderUpdateStatusEvent orderUpdateStatusEvent = new OrderUpdateStatusEvent();
         orderUpdateStatusEvent.setId(orderId);
@@ -129,6 +167,7 @@ public class OrderServiceImpl implements OrderService{
         return orderUpdateStatusEvent;
     }
 
+   
     public void sendStockUpdate(StockUpdateEvent event) {
         streamBridge.send("stockUpdate-out-0", event);
     }

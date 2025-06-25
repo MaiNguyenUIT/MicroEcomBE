@@ -6,6 +6,7 @@ import com.example.coupon_service.dto.CouponUpdateRequestDTO;
 
 import com.example.coupon_service.model.Coupon;
 import com.example.coupon_service.model.Discount;
+import com.example.coupon_service.model.CouponItem;
 
 import com.example.coupon_service.ENUM.DiscountStatus;
 
@@ -29,6 +30,13 @@ public interface CouponMapper {
     @Mapping(target = "status", expression = "java(com.example.coupon_service.ENUM.DiscountStatus.ACTIVE)")
     Coupon toEntity(CouponCreateRequestDTO dto);
 
+    @Mapping(target = "code", source = "coupon.code")
+    @Mapping(target = "type", source = "coupon.couponType")
+    @Mapping(target = "couponId", expression = "java(String.valueOf(coupon.getId()))")
+    @Mapping(target = "sellerId", source = "coupon.createdByUserId")
+    @Mapping(target = "discount", expression = "java(coupon.discount.getValue())")
+    CouponItem toEntity(Coupon coupon);
+    
     @Mapping(target = "discount", expression = "java(new Discount(dto.getDiscountPercentage()))")
     void toEntity(CouponUpdateRequestDTO dto, @MappingTarget Coupon entity);
 

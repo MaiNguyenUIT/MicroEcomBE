@@ -4,12 +4,14 @@ import com.example.coupon_service.mapper.CouponMapper;
 import com.example.coupon_service.model.CodeGenerationConfig;
 import com.example.coupon_service.model.Discount;
 import com.example.coupon_service.model.Coupon;
+import com.example.coupon_service.model.CouponItem;
 import com.example.coupon_service.repository.CouponRepository;
 import com.example.coupon_service.service.CouponService;
 
 import com.example.coupon_service.dto.CouponCreateRequestDTO;
 import com.example.coupon_service.dto.CouponResponseDTO;
 import com.example.coupon_service.dto.CouponUpdateRequestDTO;
+import com.example.coupon_service.dto.CouponsRequest;
 import com.example.coupon_service.utils.CouponCodeGenerator;
 import com.example.coupon_service.utils.SecurityUtils;
 import com.example.coupon_service.ENUM.CouponErrorReason;
@@ -24,6 +26,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.example.coupon_service.exception.NotFoundException;
 import com.example.coupon_service.exception.BadRequestException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -138,6 +141,7 @@ public class CouponServiceImpl implements CouponService {
         couponRepository.save(coupon);
     }
 
+    @Override
     public List<CouponResponseDTO> getAllCouponsByRole() {
 
         String getorUserId = SecurityUtils.getCurrentUserId();
@@ -164,7 +168,100 @@ public class CouponServiceImpl implements CouponService {
                       .collect(Collectors.toList());
     }
 
+    @Override
+    public CouponResponseDTO getCouponById(Long id){
+        
+        UserRole getorRole = SecurityUtils.getCurrentUserRole();
+        if (getorRole == null) {
+            throw new BadRequestException("User role must be provided.");
+        }
 
+        if (id == null || id <= 0) {
+            throw new BadRequestException("Coupon ID must be provided.");
+        }
+
+        Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(id).orElse(null);
+
+        return couponMapper.toResponseDTO(coupon);
+    }
+
+    @Override
+    public CouponResponseDTO getCouponByCode(String code){
+        UserRole getorRole = SecurityUtils.getCurrentUserRole();
+        if (getorRole == null) {
+            throw new BadRequestException("User role must be provided.");
+        }
+
+        if (code == null || code.isEmpty()) {
+            throw new BadRequestException("Coupon ID must be provided.");
+        }
+
+        Coupon coupon = couponRepository.findByCodeAndIsDeletedFalse(code).orElse(null);
+
+        return couponMapper.toResponseDTO(coupon);
+    }
+
+    @Override
+    public boolean checkCouponsRequest(CouponsRequest couponsCheckRequest) {
+
+        if (couponsCheckRequest == null || couponsCheckRequest.getCoupons() == null || couponsCheckRequest.getCoupons().isEmpty()) {
+            throw new BadRequestException("Coupons check request must contain at least one coupon.");
+        }
+
+        List<CouponItem> coupons = couponsCheckRequest.getCoupons();
+        
+        for (CouponItem couponItem : coupons) {
+
+            Coupon couponSearch = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId())).orElse(null);
+            if (!isValidateCoupon(couponSearch)) {
+                return false;
+            }
+
+            CouponItem couponSearchMapping = couponMapper.toEntity(couponSearch);
+            if(!couponItem.equals(couponSearchMapping)) 
+                return false;
+        }
+
+        return true;
+    }
+
+    public boolean isValidateCoupon(Coupon coupon) {
+
+        if (coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+
+        if (coupon.getCurrentUsage() >= coupon.getUsageLimit()) {
+            return false;
+        }
+
+        if (coupon.getStatus() != DiscountStatus.ACTIVE) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void applyCoupon(CouponsRequest couponsRequest){
+        if (couponsRequest == null || couponsRequest.getCoupons() == null || couponsRequest.getCoupons().isEmpty()) {
+            throw new BadRequestException("Coupons request must contain at least one coupon.");
+        }
+
+        List<CouponItem> coupons = couponsRequest.getCoupons();
+        if (!checkCouponsRequest(couponsRequest)) {
+            throw new BadRequestException("Invalid coupons provided.");
+        }
+
+        for (CouponItem couponItem : coupons) {
+            Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId()))
+            .orElseThrow(() -> new NotFoundException("Coupon not found or is deleted with ID: " + couponItem.getCouponId()));
+            coupon.setCurrentUsage(coupon.getCurrentUsage() + 1);
+            couponRepository.save(coupon);
+        }
+
+    }
 
     private static class CouponCreationDetails {
         CouponType effectiveCouponType;
@@ -189,7 +286,9 @@ public class CouponServiceImpl implements CouponService {
             CodeGenerationConfig codeConfig
     ) {
         CouponResponseDTO createdCoupons = null;
-
+        if (effectiveCouponType == CouponType.GLOBAL) {
+            creatorUserId = null;
+        }
 
         Coupon newCoupon = couponMapper.toEntity(request);
 

@@ -3,6 +3,7 @@ package com.example.coupon_service.controller;
 import com.example.coupon_service.dto.CouponCreateRequestDTO;
 import com.example.coupon_service.dto.CouponResponseDTO;
 import com.example.coupon_service.dto.CouponUpdateRequestDTO;
+import com.example.coupon_service.dto.CouponsRequest;
 import com.example.coupon_service.ENUM.UserRole;
 import com.example.coupon_service.service.CouponService;
 import com.example.coupon_service.utils.SecurityUtils;
@@ -72,4 +73,23 @@ public class CouponController {
 
         return new ResponseEntity<>(coupons, HttpStatus.OK);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CouponResponseDTO> getCouponById(@PathVariable Long id) throws Exception {
+        CouponResponseDTO apiResult = couponService.getCouponById(id);
+        return new ResponseEntity<>(apiResult, HttpStatus.OK);
+    }
+
+    @GetMapping("/{code}")
+    public ResponseEntity<CouponResponseDTO> getCouponByCode(@PathVariable String code) throws Exception {
+        CouponResponseDTO apiResult = couponService.getCouponByCode(code);
+        return new ResponseEntity<>(apiResult, HttpStatus.OK);
+    }
+
+    @PostMapping("/check")
+    public ResponseEntity<Boolean> checkCoupons(@RequestBody CouponsRequest request) {
+        boolean isValid = couponService.checkCouponsRequest(request);
+        return ResponseEntity.ok(isValid);
+    }
+    
 }

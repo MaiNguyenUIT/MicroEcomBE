@@ -1,0 +1,11 @@
+package com.example.order_service.utils;
+
+import com.example.order_service.DTO.CouponsRequest;
+import com.example.order_service.model.CouponItem;
+import java.util.List;
+
+public class CouponMapperUtil {
+    public static CouponsRequest toCouponsRequest(List<CouponItem> couponItems) {
+        return new CouponsRequest(couponItems);
+    }
+}
