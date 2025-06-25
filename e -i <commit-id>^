@@ -1,0 +1,17 @@
+[33mcommit e5e98ae841c2a7a515385ea4d8683ae82ff57447[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mcouponservice[m[33m)[m
+Author: Vminhkiet <minhkietvo6@gmail.com>
+Date:   Wed Jun 25 15:43:54 2025 +0000
+
+    Fix: remove token from config file
+
+[33mcommit 1f3e242831790d017abc1508ce8746a148effc6d[m[33m ([m[1;32mlogging-real[m[33m)[m
+Author: Vminhkiet <minhkietvo6@gmail.com>
+Date:   Sat Jun 14 07:10:17 2025 +0000
+
+    add coupon service
+
+[33mcommit c49b22e1c47323c11ea7c3754ee29eb97d7dea5f[m
+Author: Nguyen <vomainguyen120804@gmail.com>
+Date:   Thu May 1 20:37:35 2025 +0700
+
+    first commit
