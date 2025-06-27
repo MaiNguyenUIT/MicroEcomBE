@@ -6,5 +6,6 @@ import lombok.Data;
 
 @Data
 public class CouponsRequest {
-    List<CouponItem> coupons;
+    List<String> couponIds;
+    CouponType couponType;
 }

@@ -16,6 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
              configuration = FeignConfig.class
 )
 public interface CouponClient {
-    @PostMapping("/check")
-    Boolean checkCoupons(@RequestBody CouponsRequest request);
+    @GetMapping("/getcheck")
+    CouponValidationResponse getCouponsValidationResponses(@RequestBody CouponsRequest request);
 }

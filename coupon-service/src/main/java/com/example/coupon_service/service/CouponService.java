@@ -19,7 +19,7 @@ public interface CouponService {
     
     public CouponResponseDTO getCouponById(Long id);
     public CouponResponseDTO getCouponByCode(String code);
-    public boolean checkCouponsRequest(CouponsRequest couponsRequest);
+    public CouponValidationResponse getCouponsValidationRequest(CouponsRequest couponsRequest);
     public void applyCoupon(CouponsRequest couponsRequest);
     public List<CouponResponseDTO> getAllCouponsByRole();
 

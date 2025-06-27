@@ -202,27 +202,55 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    public boolean checkCouponsRequest(CouponsRequest couponsCheckRequest) {
+    public CouponValidationResponse getCouponsValidationRequest(CouponsRequest couponsRequest){
 
-        if (couponsCheckRequest == null || couponsCheckRequest.getCoupons() == null || couponsCheckRequest.getCoupons().isEmpty()) {
+        if (couponsRequest == null || couponsRequest.getCouponIds() == null || couponsCheckRequest.getCouponIds().isEmpty()) {
             throw new BadRequestException("Coupons check request must contain at least one coupon.");
         }
 
-        List<CouponItem> coupons = couponsCheckRequest.getCoupons();
-        
-        for (CouponItem couponItem : coupons) {
+        List<String> couponIds = couponsRequest.getCouponIds();
+        CouponType couponType = couponsRequest.getCouponType();
+        List<String> invalidCouponIds = new ArrayList<>();
+        List<CouponItem> validCoupons = new ArrayList<>();
 
-            Coupon couponSearch = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId())).orElse(null);
+        for (String couponId : couponIds) {
+
+            Coupon couponSearch = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponId)).orElse(null);
+            if (couponSearch == null) {
+                invalidCouponIds.add(couponId);
+                continue;
+            }
+
+            if (!couponType.equals(couponSearch.getCouponType())) {
+                invalidCouponIds.add(couponId);
+                continue;
+            }
+
             if (!isValidateCoupon(couponSearch)) {
-                return false;
+                invalidCouponIds.add(couponId);
+                continue;
             }
 
             CouponItem couponSearchMapping = couponMapper.toEntity(couponSearch);
-            if(!couponItem.equals(couponSearchMapping)) 
-                return false;
+            validCoupons.add(couponSearchMapping);
         }
+        
+        // Set<Long> seenSellerIds = new HashSet<>();
+        // Iterator<CouponItem> iterator = validCoupons.iterator();
+        // while (iterator.hasNext()) {
+        //     CouponItem item = iterator.next();
+        //     Long sellerId = item.getSellerId();
+        //     if (!seenSellerIds.add(sellerId)) {
+        //         iterator.remove();
+        //         invalidCouponIds.add(item.getId());
+        //     }
+        // }
 
-        return true;
+        return CouponValidationResponse.builder()
+                .success(invalidCouponIds.isEmpty())
+                .validCoupons(validCoupons)
+                .invalidCouponIds(invalidCouponIds)
+                .build();
     }
 
     public boolean isValidateCoupon(Coupon coupon) {

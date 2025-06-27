@@ -12,5 +12,4 @@ public class CouponItem {
     private String sellerId;
     private String code;
     private BigDecimal discount;
-    private CouponType type;
 }

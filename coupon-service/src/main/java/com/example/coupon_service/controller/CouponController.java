@@ -86,9 +86,9 @@ public class CouponController {
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
 
-    @PostMapping("/check")
-    public ResponseEntity<Boolean> checkCoupons(@RequestBody CouponsRequest request) {
-        boolean isValid = couponService.checkCouponsRequest(request);
+    @GetMapping("/getcheck")
+    public ResponseEntity<CouponValidationResponse> getCouponsValidationResponses(@RequestBody CouponsRequest request) {
+        CouponValidationResponse isValid = couponService.getCouponsValidationRequest(request);
         return ResponseEntity.ok(isValid);
     }
     

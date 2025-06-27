@@ -70,29 +70,37 @@ public class OrderServiceImpl implements OrderService{
 
         UserDTO userDTO = userClient.getUserFromJwtToken();
         List<Order> orders = new ArrayList<>();
-        List<CouponItem> coupons = orderDTO.getCoupons();
-        CouponsRequest couponsCheckRequest = CouponMapperUtil.toCouponsRequest(coupons);
+        List<String> couponIds = orderDTO.getCouponIds();
         CouponType couponType = orderDTO.getCouponType();
+
+        CouponsRequest couponsCheckRequest = CouponMapperUtil.toCouponsRequest(couponIds, couponType);
         StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
         String orderGroupId = UUID.randomUUID().toString();
         
-        if (!couponClient.checkCoupons(couponsCheckRequest)) {
+        CouponValidationResponse couponValidationResponse = couponClient.getCouponsValidationResponses(couponsCheckRequest);
+        if (!couponValidationResponse.isSuccess()) {
             throw new BadRequestException("Invalid coupons provided");
         }
 
+        List<CouponItem> validCoupons = couponValidationResponse.getValidCoupons();
+
+        Map<String, CouponItem> couponMapBySeller = validCoupons.stream()
+            .collect(Collectors.toMap(CouponItem::getSellerId, Function.identity(), (c1, c2) -> c1));
 
         for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
             String sellerId = entry.getKey();
             List<CartItemDTO> sellerItems = entry.getValue();
-            CouponItem couponItem = coupons.get(0);
             
-            if(couponType != CouponType.GLOBAL)
-                couponItem = extractCouponItemBySeller(coupons, sellerId);
+            CouponItem couponItem = couponMapBySeller.get(sellerId);
+
             
             Order order = new Order();
-            order.setCouponId(couponItem.getCouponId());
-            order.setCode(couponItem.getCode());
-            order.setCouponType(couponItem.getType());
+            if (couponItem != null) {
+                order.setCouponId(couponItem.getCouponId());
+                order.setCode(couponItem.getCode());
+                order.setCouponType(couponType);
+            }   
+            
             order.setShippingAddress(orderDTO.getShippingAddress());
             order.setPaymentMethod(orderDTO.getPaymentMethod());
             order.setOrderDateTime(orderDTO.getOrderDateTime());
@@ -139,22 +147,6 @@ public class OrderServiceImpl implements OrderService{
     }
 
     
-    public CouponItem extractCouponItemBySeller(List<CouponItem> coupons, String sellerId) {
-        if (coupons == null || coupons.isEmpty()) {
-            return null;
-        }
-
-        CouponItem couponSearchItem = null;
-        for (CouponItem couponItem : coupons) {
-            if (couponItem.getSellerId() != null) {
-                if(!couponItem.getSellerId().equals(sellerId))
-                    continue;
-                couponSearchItem = couponItem;
-                break;
-            }
-        }
-        return couponSearchItem;
-    }
 
     public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
         OrderUpdateStatusEvent orderUpdateStatusEvent = new OrderUpdateStatusEvent();

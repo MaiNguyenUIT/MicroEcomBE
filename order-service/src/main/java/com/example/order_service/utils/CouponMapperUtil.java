@@ -5,7 +5,7 @@ import com.example.order_service.model.CouponItem;
 import java.util.List;
 
 public class CouponMapperUtil {
-    public static CouponsRequest toCouponsRequest(List<CouponItem> couponItems) {
-        return new CouponsRequest(couponItems);
+    public static CouponsRequest toCouponsRequest(List<String> couponIds, CouponType couponType) {
+        return new CouponsRequest(couponIds, couponType);
     }
 }

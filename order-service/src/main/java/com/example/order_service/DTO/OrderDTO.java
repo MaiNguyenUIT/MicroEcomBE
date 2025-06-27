@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 public class OrderDTO {
     private LocalDateTime orderDateTime = LocalDateTime.now();
-    private List<CouponItem> coupons;
+    private List<String> couponIds;
     private CouponType couponType;
     private ShippingAddress shippingAddress;
     private PAYMENT_METHOD paymentMethod;

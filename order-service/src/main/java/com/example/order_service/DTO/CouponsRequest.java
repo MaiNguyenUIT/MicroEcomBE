@@ -9,5 +9,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class CouponsRequest {
-    List<CouponItem> coupons;
+    List<String> couponIds;
+    CouponType couponType;
 }
