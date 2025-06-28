@@ -12,6 +12,7 @@ import com.example.coupon_service.dto.CouponCreateRequestDTO;
 import com.example.coupon_service.dto.CouponResponseDTO;
 import com.example.coupon_service.dto.CouponUpdateRequestDTO;
 import com.example.coupon_service.dto.CouponsRequest;
+import com.example.coupon_service.dto.CouponValidationResponse; 
 import com.example.coupon_service.utils.CouponCodeGenerator;
 import com.example.coupon_service.utils.SecurityUtils;
 import com.example.coupon_service.ENUM.CouponErrorReason;
@@ -31,6 +32,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set; 
 
 @Service
 public class CouponServiceImpl implements CouponService {
@@ -204,7 +208,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     public CouponValidationResponse getCouponsValidationRequest(CouponsRequest couponsRequest){
 
-        if (couponsRequest == null || couponsRequest.getCouponIds() == null || couponsCheckRequest.getCouponIds().isEmpty()) {
+        if (couponsRequest == null || couponsRequest.getCouponIds() == null || couponsRequest.getCouponIds().isEmpty()) {
             throw new BadRequestException("Coupons check request must contain at least one coupon.");
         }
 
@@ -270,26 +274,26 @@ public class CouponServiceImpl implements CouponService {
         return true;
     }
 
-    @Override
-    @Transactional
-    public void applyCoupon(CouponsRequest couponsRequest){
-        if (couponsRequest == null || couponsRequest.getCoupons() == null || couponsRequest.getCoupons().isEmpty()) {
-            throw new BadRequestException("Coupons request must contain at least one coupon.");
-        }
+    // @Override
+    // @Transactional
+    // public void applyCoupon(CouponsRequest couponsRequest){
+    //     if (couponsRequest == null || couponsRequest.getCouponIds() == null || couponsRequest.getCouponIds().isEmpty()) {
+    //         throw new BadRequestException("Coupons request must contain at least one coupon.");
+    //     }
 
-        List<CouponItem> coupons = couponsRequest.getCoupons();
-        if (!checkCouponsRequest(couponsRequest)) {
-            throw new BadRequestException("Invalid coupons provided.");
-        }
+    //     List<String> coupons = couponsRequest.getCouponIds();
+    //     if (!checkCouponsRequest(couponsRequest)) {
+    //         throw new BadRequestException("Invalid coupons provided.");
+    //     }
 
-        for (CouponItem couponItem : coupons) {
-            Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId()))
-            .orElseThrow(() -> new NotFoundException("Coupon not found or is deleted with ID: " + couponItem.getCouponId()));
-            coupon.setCurrentUsage(coupon.getCurrentUsage() + 1);
-            couponRepository.save(coupon);
-        }
+    //     for (CouponItem couponItem : coupons) {
+    //         Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId()))
+    //         .orElseThrow(() -> new NotFoundException("Coupon not found or is deleted with ID: " + couponItem.getCouponId()));
+    //         coupon.setCurrentUsage(coupon.getCurrentUsage() + 1);
+    //         couponRepository.save(coupon);
+    //     }
 
-    }
+    // }
 
     private static class CouponCreationDetails {
         CouponType effectiveCouponType;

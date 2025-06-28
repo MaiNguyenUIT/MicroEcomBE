@@ -31,10 +31,9 @@ public interface CouponMapper {
     Coupon toEntity(CouponCreateRequestDTO dto);
 
     @Mapping(target = "code", source = "coupon.code")
-    @Mapping(target = "type", source = "coupon.couponType")
     @Mapping(target = "couponId", expression = "java(String.valueOf(coupon.getId()))")
     @Mapping(target = "sellerId", source = "coupon.createdByUserId")
-    @Mapping(target = "discount", expression = "java(coupon.discount.getValue())")
+    @Mapping(target = "discount", source = "coupon.discount.value")
     CouponItem toEntity(Coupon coupon);
     
     @Mapping(target = "discount", expression = "java(new Discount(dto.getDiscountPercentage()))")

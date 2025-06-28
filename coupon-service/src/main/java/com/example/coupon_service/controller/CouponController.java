@@ -4,6 +4,7 @@ import com.example.coupon_service.dto.CouponCreateRequestDTO;
 import com.example.coupon_service.dto.CouponResponseDTO;
 import com.example.coupon_service.dto.CouponUpdateRequestDTO;
 import com.example.coupon_service.dto.CouponsRequest;
+import com.example.coupon_service.dto.CouponValidationResponse; 
 import com.example.coupon_service.ENUM.UserRole;
 import com.example.coupon_service.service.CouponService;
 import com.example.coupon_service.utils.SecurityUtils;
