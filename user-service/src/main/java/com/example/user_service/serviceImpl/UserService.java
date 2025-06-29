@@ -31,17 +31,17 @@ public class UserService implements com.example.user_service.service.UserService
 
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
-        String username = loginRequest.getUsername();
-        String password = loginRequest.getPassword();
-        Authentication authentication = authenticate(username, password);
+            String username = loginRequest.getUsername();
+            String password = loginRequest.getPassword();
+            Authentication authentication = authenticate(username, password);
 
-        User user = userRepository.findByusername(username);
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-        String jwt =  jwtProvider.generatedToken(authentication);
+            User user = userRepository.findByusername(username);
+            Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+            String jwt =  jwtProvider.generatedToken(authentication);
 
-        AuthResponse authResponse = new AuthResponse();
-        authResponse.setJwt(jwt);
-        return authResponse;
+            AuthResponse authResponse = new AuthResponse();
+            authResponse.setJwt(jwt);
+            return authResponse;
     }
 
     @Override

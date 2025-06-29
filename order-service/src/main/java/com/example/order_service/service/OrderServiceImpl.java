@@ -2,30 +2,25 @@ package com.example.order_service.service;
 
 import com.example.order_service.DTO.*;
 import com.example.order_service.ENUM.ORDER_STATUS;
+import com.example.order_service.ENUM.PAYMENT_TYPE;
 import com.example.order_service.client.CartClient;
 import com.example.order_service.client.PaymentClient;
+import com.example.order_service.client.ProductClient;
 import com.example.order_service.client.UserClient;
-import com.example.order_service.event.OrderConfirmEvent;
-import com.example.order_service.event.OrderUpdateStatusEvent;
-import com.example.order_service.event.PaymentEvent;
-import com.example.order_service.event.StockUpdateEvent;
+import com.example.order_service.event.*;
 import com.example.order_service.exception.BadRequestException;
 import com.example.order_service.exception.NotFoundException;
-import com.example.order_service.mapper.OrderMapper;
 import com.example.order_service.model.Order;
 import com.example.order_service.model.OrderItem;
 import com.example.order_service.model.OrderTracker;
 import com.example.order_service.model.ProductQuantity;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.repository.OrderTrackerRepository;
-import org.apache.catalina.User;
-import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +39,8 @@ public class OrderServiceImpl implements OrderService{
     private PaymentClient paymentClient;
     @Autowired
     private OrderTrackerRepository orderTrackerRepository;
+    @Autowired
+    private ProductClient productClient;
 
     private final StreamBridge streamBridge;
 
@@ -62,7 +59,6 @@ public class OrderServiceImpl implements OrderService{
                 .stream()
                 .collect(Collectors.groupingBy(CartItemDTO::getOwnerId));
 
-        UserDTO userDTO = userClient.getUserFromJwtToken();
         List<Order> orders = new ArrayList<>();
         StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
         String orderGroupId = UUID.randomUUID().toString();
@@ -80,7 +76,6 @@ public class OrderServiceImpl implements OrderService{
             order.setSellerId(sellerId);
             order.setOrderItems(new ArrayList<>());
 
-
             int total = 0;
 
             for (CartItemDTO item : sellerItems) {
@@ -95,7 +90,6 @@ public class OrderServiceImpl implements OrderService{
                 productQuantity.setQuantity(item.getQuantity());
                 stockUpdateEvent.getProductQuantities().add(productQuantity);
             }
-
 
             order.setOrderAmount(total);
             order.setOrderGroupId(orderGroupId);
@@ -116,6 +110,93 @@ public class OrderServiceImpl implements OrderService{
         }
 
         return orders;
+    }
+
+    @Override
+    public Order createOrderDirectlyOffline(OrderDirectlyDTO orderDirectlyDTO) {
+        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
+        if (productResponse == null){
+            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
+        }
+        String orderGroupId = UUID.randomUUID().toString();
+        Order order = new Order();
+        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
+        order.setSellerId(productResponse.getOwnerId());
+        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
+        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
+        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
+        order.setOrderItems(new ArrayList<>());
+
+        //Create order item
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductId(orderDirectlyDTO.getProductId());
+        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
+        orderItem.setOrder(order);
+        orderItem.setOrder(order);
+
+        order.getOrderItems().add(orderItem);
+        order.setOrderAmount(orderDirectlyDTO.getProductQuantity()*productResponse.getPrice());
+        order.setOrderGroupId(orderGroupId);
+
+        ProductQuantity productQuantity = new ProductQuantity();
+        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
+        productQuantity.setProductId(orderDirectlyDTO.getProductId());
+
+        Order createdOrder = orderRepository.save(order);
+        StockUpdateDirectlyEvent stockUpdateDirectlyEvent = new StockUpdateDirectlyEvent();
+        stockUpdateDirectlyEvent.setOrderId(createdOrder.getId());
+        stockUpdateDirectlyEvent.setProductQuantity(productQuantity);
+        stockUpdateDirectlyEvent.setOrderGroupId(orderGroupId);
+
+        streamBridge.send("stockUpdateDirectly-out-0", stockUpdateDirectlyEvent);
+
+        return createdOrder;
+    }
+
+    @Override
+    public String createOrderDirectlyOnline(OrderDirectlyDTO orderDirectlyDTO) {
+        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
+        if (productResponse == null){
+            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
+        }
+        String orderGroupId = UUID.randomUUID().toString();
+        Order order = new Order();
+        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
+        order.setSellerId(productResponse.getOwnerId());
+        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
+        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
+        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
+        order.setOrderItems(new ArrayList<>());
+
+        //Create order item
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductId(orderDirectlyDTO.getProductId());
+        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
+        orderItem.setOrder(order);
+        orderItem.setOrder(order);
+
+        order.getOrderItems().add(orderItem);
+        order.setOrderAmount(orderDirectlyDTO.getProductQuantity()*productResponse.getPrice());
+        order.setOrderGroupId(orderGroupId);
+
+        ProductQuantity productQuantity = new ProductQuantity();
+        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
+        productQuantity.setProductId(orderDirectlyDTO.getProductId());
+
+        Order createdOrder = orderRepository.save(order);
+
+        //Create product reservation event;
+        ProductReservationEvent productReservationEvent = new ProductReservationEvent(productQuantity.getProductId(),
+                createdOrder.getId(), productQuantity.getQuantity());
+
+        streamBridge.send("createProductReservation-out-0", productReservationEvent);
+
+        //Create payment url
+        PaymentDTO paymentDTO = new PaymentDTO();
+        paymentDTO.setOrderId(createdOrder.getId());
+        paymentDTO.setOrderAmount(order.getOrderAmount());
+        paymentDTO.setPaymentType(PAYMENT_TYPE.PAYMENT_THEN_ORDER);
+        return paymentClient.createPayment(paymentDTO);
     }
 
     public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
@@ -202,6 +283,7 @@ public class OrderServiceImpl implements OrderService{
         PaymentDTO paymentDTO = new PaymentDTO();
         paymentDTO.setOrderId(orderId);
         paymentDTO.setOrderAmount(order.getOrderAmount());
+        paymentDTO.setPaymentType(PAYMENT_TYPE.ORDER_THEN_PAYMENT);
         return paymentClient.createPayment(paymentDTO);
     }
 }
