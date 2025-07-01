@@ -1,0 +1,39 @@
+# Maven
+/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/
+.repository/
+.flattened-pom.xml # for Spring Boot 2.x
+
+# Java
+*.class
+
+# IDE files
+.idea/
+.project
+.classpath
+.settings/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Log files
+*.log
+logs/
+
+# Local development script
+run-dev.sh
+
+# Docker
+.dockerignore
+
+# Environment variables
+.env
+.env.*
