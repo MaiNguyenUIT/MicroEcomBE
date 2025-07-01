@@ -11,7 +11,6 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     long countByCreatedByUserIdAndCreatedAtBetween(String userId, LocalDateTime start, LocalDateTime end);
     Optional<Coupon> findByCodeAndIsDeletedFalse(String code);
     Optional<Coupon> findByIdAndIsDeletedFalse(Long id);
-    List<Coupon> findBycreatedByUserIdAndIsDeletedFalse(String sellerId);
+    List<Coupon> findBycreatedByUserIdAndIsDeletedFalse(String createdByUserId);
     List<Coupon> findBycouponTypeAndIsDeletedFalse(CouponType couponType);
-    Optional<Coupon> findById(Long id);
 }

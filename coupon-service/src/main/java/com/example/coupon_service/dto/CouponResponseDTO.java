@@ -32,5 +32,5 @@ public class CouponResponseDTO {
 
     private CouponType couponType;
 
-    private String sellerId;
+    private String createdByUserId;
 }

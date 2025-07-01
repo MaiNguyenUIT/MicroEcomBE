@@ -21,7 +21,7 @@ import org.mapstruct.factory.Mappers;
 public interface CouponMapper {
 
     @Mapping(target = "discountPercentage", source = "discount.value")
-    @Mapping(target = "sellerId", source = "createdByUserId")
+    @Mapping(target = "createdByUserId", source = "createdByUserId")
     CouponResponseDTO toResponseDTO(Coupon coupon);
 
     @Mapping(target = "discount", expression = "java(new Discount(dto.getDiscountPercentage()))")
@@ -31,9 +31,11 @@ public interface CouponMapper {
     Coupon toEntity(CouponCreateRequestDTO dto);
 
     @Mapping(target = "code", source = "coupon.code")
-    @Mapping(target = "couponId", expression = "java(String.valueOf(coupon.getId()))")
-    @Mapping(target = "sellerId", source = "coupon.createdByUserId")
+    @Mapping(target = "couponId", source = "coupon.id")
+    @Mapping(target = "createdByUserId", source = "coupon.createdByUserId")
     @Mapping(target = "discount", source = "coupon.discount.value")
+    @Mapping(target = "couponType", source = "coupon.couponType")
+    @Mapping(target = "minPurchaseAmount", source = "coupon.minPurchaseAmount")
     CouponItem toEntity(Coupon coupon);
     
     @Mapping(target = "discount", expression = "java(new Discount(dto.getDiscountPercentage()))")

@@ -105,7 +105,7 @@ public class CouponServiceImpl implements CouponService {
         String updaterUserId = SecurityUtils.getCurrentUserId();
         UserRole updaterRole = SecurityUtils.getCurrentUserRole();
 
-        if (id == null || id <= 0) {
+        if (id == null) {
             throw new BadRequestException("Coupon ID must be provided.");
         }        
         Coupon coupon = couponRepository.findById(id).orElseThrow(() -> new NotFoundException("Coupon not found with ID: " + id));
@@ -174,18 +174,10 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     public CouponResponseDTO getCouponById(Long id){
-        
-        UserRole getorRole = SecurityUtils.getCurrentUserRole();
-        if (getorRole == null) {
-            throw new BadRequestException("User role must be provided.");
-        }
-
-        if (id == null || id <= 0) {
+        if (id == null) {
             throw new BadRequestException("Coupon ID must be provided.");
         }
-
         Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(id).orElse(null);
-
         return couponMapper.toResponseDTO(coupon);
     }
 
@@ -212,20 +204,13 @@ public class CouponServiceImpl implements CouponService {
             throw new BadRequestException("Coupons check request must contain at least one coupon.");
         }
 
-        List<String> couponIds = couponsRequest.getCouponIds();
-        CouponType couponType = couponsRequest.getCouponType();
-        List<String> invalidCouponIds = new ArrayList<>();
+        List<Long> couponIds = couponsRequest.getCouponIds();
+        List<Long> invalidCouponIds = new ArrayList<>();
         List<CouponItem> validCoupons = new ArrayList<>();
 
-        for (String couponId : couponIds) {
-
-            Coupon couponSearch = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponId)).orElse(null);
+        for (Long couponId : couponIds) {
+            Coupon couponSearch = couponRepository.findByIdAndIsDeletedFalse(couponId).orElse(null);
             if (couponSearch == null) {
-                invalidCouponIds.add(couponId);
-                continue;
-            }
-
-            if (!couponType.equals(couponSearch.getCouponType())) {
                 invalidCouponIds.add(couponId);
                 continue;
             }
@@ -238,17 +223,6 @@ public class CouponServiceImpl implements CouponService {
             CouponItem couponSearchMapping = couponMapper.toEntity(couponSearch);
             validCoupons.add(couponSearchMapping);
         }
-        
-        // Set<Long> seenSellerIds = new HashSet<>();
-        // Iterator<CouponItem> iterator = validCoupons.iterator();
-        // while (iterator.hasNext()) {
-        //     CouponItem item = iterator.next();
-        //     Long sellerId = item.getSellerId();
-        //     if (!seenSellerIds.add(sellerId)) {
-        //         iterator.remove();
-        //         invalidCouponIds.add(item.getId());
-        //     }
-        // }
 
         return CouponValidationResponse.builder()
                 .success(invalidCouponIds.isEmpty())
@@ -258,42 +232,17 @@ public class CouponServiceImpl implements CouponService {
     }
 
     public boolean isValidateCoupon(Coupon coupon) {
-
         if (coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
             return false;
         }
-
         if (coupon.getCurrentUsage() >= coupon.getUsageLimit()) {
             return false;
         }
-
         if (coupon.getStatus() != DiscountStatus.ACTIVE) {
             return false;
         }
-
         return true;
     }
-
-    // @Override
-    // @Transactional
-    // public void applyCoupon(CouponsRequest couponsRequest){
-    //     if (couponsRequest == null || couponsRequest.getCouponIds() == null || couponsRequest.getCouponIds().isEmpty()) {
-    //         throw new BadRequestException("Coupons request must contain at least one coupon.");
-    //     }
-
-    //     List<String> coupons = couponsRequest.getCouponIds();
-    //     if (!checkCouponsRequest(couponsRequest)) {
-    //         throw new BadRequestException("Invalid coupons provided.");
-    //     }
-
-    //     for (CouponItem couponItem : coupons) {
-    //         Coupon coupon = couponRepository.findByIdAndIsDeletedFalse(Long.parseLong(couponItem.getCouponId()))
-    //         .orElseThrow(() -> new NotFoundException("Coupon not found or is deleted with ID: " + couponItem.getCouponId()));
-    //         coupon.setCurrentUsage(coupon.getCurrentUsage() + 1);
-    //         couponRepository.save(coupon);
-    //     }
-
-    // }
 
     private static class CouponCreationDetails {
         CouponType effectiveCouponType;

@@ -34,5 +34,4 @@ public class CouponCreateRequestDTO {
 
     @DecimalMin(value = "0.00", message = "Minimum purchase amount cannot be negative.")
     private BigDecimal minimumPurchaseAmount;
-    
 }

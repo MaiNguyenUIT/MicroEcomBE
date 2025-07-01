@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 public class Discount {
     BigDecimal value;
 
-
     public Discount(BigDecimal value) {
         if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Discount percentage value must be positive.");

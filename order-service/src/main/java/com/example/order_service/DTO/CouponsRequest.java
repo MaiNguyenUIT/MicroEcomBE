@@ -11,6 +11,5 @@ import lombok.Data;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CouponsRequest {
-    List<String> couponIds;
-    CouponType couponType;
+    List<Long> couponIds;
 }

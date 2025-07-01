@@ -32,11 +32,7 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private ORDER_STATUS orderStatus = ORDER_STATUS.PENDING;
 
-    private String couponId;
-    private String code;
-    @Enumerated(EnumType.STRING)
-    private CouponType couponType;
-
+    private List<Long> couponIds = new ArrayList<>();
     @Embedded
     private ShippingAddress shippingAddress;
 

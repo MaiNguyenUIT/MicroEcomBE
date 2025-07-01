@@ -14,5 +14,5 @@ import com.example.coupon_service.model.CouponItem;
 public class CouponValidationResponse {
     private boolean success;
     private List<CouponItem> validCoupons;
-    private List<String> invalidCouponIds;
+    private List<Long> invalidCouponIds;
 }

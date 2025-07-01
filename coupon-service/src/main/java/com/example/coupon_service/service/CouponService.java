@@ -14,14 +14,12 @@ import java.util.Optional;
 
 public interface CouponService {
 
-    public CouponResponseDTO createCoupon(CouponCreateRequestDTO request);
-    public CouponResponseDTO updateCoupon(Long id, CouponUpdateRequestDTO updateDTO);
-    public void softDeleteCoupon(Long id);
-    
-    public CouponResponseDTO getCouponById(Long id);
-    public CouponResponseDTO getCouponByCode(String code);
-    public CouponValidationResponse getCouponsValidationRequest(CouponsRequest couponsRequest);
-    // public void applyCoupon(CouponsRequest couponsRequest);
-    public List<CouponResponseDTO> getAllCouponsByRole();
+    CouponResponseDTO createCoupon(CouponCreateRequestDTO request);
+    CouponResponseDTO updateCoupon(Long id, CouponUpdateRequestDTO updateDTO);
+    void softDeleteCoupon(Long id);
+    CouponResponseDTO getCouponById(Long id);
+    CouponResponseDTO getCouponByCode(String code);
+    CouponValidationResponse getCouponsValidationRequest(CouponsRequest couponsRequest);
+    List<CouponResponseDTO> getAllCouponsByRole();
 
 }

@@ -47,10 +47,7 @@ public class CouponController {
     public ResponseEntity<CouponResponseDTO> updateCoupon(
             @PathVariable Long id,
             @RequestBody CouponUpdateRequestDTO request) {
-
-
         CouponResponseDTO updatedCoupons = couponService.updateCoupon(id,request);
-
         return new ResponseEntity<>(updatedCoupons, HttpStatus.NO_CONTENT);
     }
 
@@ -58,10 +55,7 @@ public class CouponController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SELLER')")
     public ResponseEntity<Void> softDeleteCoupon(
             @PathVariable Long id) {
-
-        
         couponService.softDeleteCoupon(id);
-
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
@@ -87,7 +81,7 @@ public class CouponController {
         return new ResponseEntity<>(apiResult, HttpStatus.OK);
     }
 
-    @GetMapping("/getcheck")
+    @PostMapping("/check")
     public ResponseEntity<CouponValidationResponse> getCouponsValidationResponses(@RequestBody CouponsRequest request) {
         CouponValidationResponse isValid = couponService.getCouponsValidationRequest(request);
         return ResponseEntity.ok(isValid);
