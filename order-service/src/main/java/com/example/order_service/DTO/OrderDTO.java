@@ -5,11 +5,12 @@ import com.example.order_service.model.ShippingAddress;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class OrderDTO {
     private LocalDateTime orderDateTime = LocalDateTime.now();
-    private String coupon;
+    private List<Long> couponIds;
     private ShippingAddress shippingAddress;
     private PAYMENT_METHOD paymentMethod;
 }

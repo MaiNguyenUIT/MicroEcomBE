@@ -1,9 +1,11 @@
 package com.example.order_service.service;
 
 import com.example.order_service.DTO.*;
+import com.example.order_service.ENUM.CouponType;
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.ENUM.PAYMENT_TYPE;
 import com.example.order_service.client.CartClient;
+import com.example.order_service.client.CouponClient;
 import com.example.order_service.client.PaymentClient;
 import com.example.order_service.client.ProductClient;
 import com.example.order_service.client.UserClient;
@@ -13,19 +15,17 @@ import com.example.order_service.exception.NotFoundException;
 import com.example.order_service.model.Order;
 import com.example.order_service.model.OrderItem;
 import com.example.order_service.model.OrderTracker;
+import com.example.order_service.model.CouponItem;
 import com.example.order_service.model.ProductQuantity;
 import com.example.order_service.repository.OrderRepository;
 import com.example.order_service.repository.OrderTrackerRepository;
+import com.example.order_service.utils.CouponMapperUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.math.BigDecimal;
+import java.util.*;
 
 @Service
 public class OrderServiceImpl implements OrderService{
@@ -37,6 +37,8 @@ public class OrderServiceImpl implements OrderService{
     private UserClient userClient;
     @Autowired
     private PaymentClient paymentClient;
+    @Autowired
+    private CouponClient couponClient;
     @Autowired
     private OrderTrackerRepository orderTrackerRepository;
     @Autowired
@@ -51,65 +53,73 @@ public class OrderServiceImpl implements OrderService{
     @Override
     public List<Order> createOrder(OrderDTO orderDTO) {
         CartDTO cart = cartClient.getUserCart();
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+
         if (cart == null || cart.getCartItems().isEmpty()) {
-            throw new BadRequestException("Cart is empty with user id: " + SecurityContextHolder.getContext().getAuthentication().getName());
+            throw new BadRequestException("Cart is empty with user id: " + userId);
         }
 
         Map<String, List<CartItemDTO>> itemsBySeller = cart.getCartItems()
                 .stream()
                 .collect(Collectors.groupingBy(CartItemDTO::getOwnerId));
 
-        List<Order> orders = new ArrayList<>();
-        StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
+        List<Long> couponIds = orderDTO.getCouponIds();
+        List<CouponItem> validCoupons = new ArrayList<>();
+
+        if (!couponIds.isEmpty()) {
+            CouponValidationResponse response = couponClient.getCouponsValidationResponses(
+                    CouponMapperUtil.toCouponsRequest(couponIds)
+            );
+
+            if (!response.isSuccess()) {
+                throw new BadRequestException("Invalid coupons provided");
+            }
+
+            validCoupons = response.getValidCoupons();
+        }
+
         String orderGroupId = UUID.randomUUID().toString();
+        List<Order> createdOrders = new ArrayList<>();
 
         for (Map.Entry<String, List<CartItemDTO>> entry : itemsBySeller.entrySet()) {
             String sellerId = entry.getKey();
             List<CartItemDTO> sellerItems = entry.getValue();
-
-            Order order = new Order();
-            order.setCoupon(orderDTO.getCoupon());
-            order.setShippingAddress(orderDTO.getShippingAddress());
-            order.setPaymentMethod(orderDTO.getPaymentMethod());
-            order.setOrderDateTime(orderDTO.getOrderDateTime());
-            order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
-            order.setSellerId(sellerId);
-            order.setOrderItems(new ArrayList<>());
-
-            int total = 0;
-
-            for (CartItemDTO item : sellerItems) {
-                OrderItem orderItem = new OrderItem();
-                orderItem.setProductId(item.getProductId());
-                orderItem.setQuantity(item.getQuantity());
-                orderItem.setOrder(order);
-                order.getOrderItems().add(orderItem);
-                total += item.getPrice();
-                ProductQuantity productQuantity = new ProductQuantity();
-                productQuantity.setProductId(item.getProductId());
-                productQuantity.setQuantity(item.getQuantity());
-                stockUpdateEvent.getProductQuantities().add(productQuantity);
-            }
-
-            order.setOrderAmount(total);
-            order.setOrderGroupId(orderGroupId);
-            Order createOrder = orderRepository.save(order);
-            stockUpdateEvent.setOrderId(createOrder.getId());
+            Order order = buildOrder(orderDTO, userId, sellerId, orderGroupId);
+            StockUpdateEvent stockUpdateEvent = new StockUpdateEvent();
             stockUpdateEvent.setOrderGroupId(orderGroupId);
 
-            OrderTracker orderTracker = new OrderTracker();
-            orderTracker.setId(createOrder.getId().toString() + orderGroupId);
-            orderTracker.setOrderGroupId(orderGroupId);
-            orderTracker.setOrderId(createOrder.getId());
-            orderTracker.setStatus("fail"+orderGroupId);
-            orderTrackerRepository.save(orderTracker);
-            //send event to product service
+            int total = buildOrderItems(order, sellerItems, stockUpdateEvent);
+
+            BigDecimal totalDiscount = applyCoupons(order, validCoupons, sellerId, total);
+            int finalAmount = BigDecimal.valueOf(total)
+                    .multiply(BigDecimal.ONE.subtract(totalDiscount))
+                    .intValue();
+            order.setOrderAmount(finalAmount);
+
+            Order savedOrder = orderRepository.save(order);
+            stockUpdateEvent.setOrderId(savedOrder.getId());
             sendStockUpdate(stockUpdateEvent);
 
-            orders.add(createOrder);
+            OrderTracker orderTracker = buildOrderTracker(savedOrder.getId(), orderGroupId);
+            orderTrackerRepository.save(orderTracker);
+
+            createdOrders.add(savedOrder);
         }
 
-        return orders;
+        return createdOrders;
+    }
+
+    private Order buildOrder(OrderDTO dto, String userId, String sellerId, String groupId) {
+        Order order = new Order();
+        order.setUserId(userId);
+        order.setSellerId(sellerId);
+        order.setOrderGroupId(groupId);
+        order.setShippingAddress(dto.getShippingAddress());
+        order.setPaymentMethod(dto.getPaymentMethod());
+        order.setOrderDateTime(dto.getOrderDateTime());
+        order.setOrderItems(new ArrayList<>());
+        order.setCouponIds(new ArrayList<>());
+        return order;
     }
 
     @Override
@@ -198,6 +208,63 @@ public class OrderServiceImpl implements OrderService{
         paymentDTO.setPaymentType(PAYMENT_TYPE.PAYMENT_THEN_ORDER);
         return paymentClient.createPayment(paymentDTO);
     }
+  
+    private int buildOrderItems(Order order, List<CartItemDTO> items, StockUpdateEvent event) {
+        int total = 0;
+        for (CartItemDTO item : items) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProductId(item.getProductId());
+            orderItem.setQuantity(item.getQuantity());
+            order.getOrderItems().add(orderItem);
+
+            total += item.getPrice();
+
+            ProductQuantity pq = new ProductQuantity();
+            pq.setProductId(item.getProductId());
+            pq.setQuantity(item.getQuantity());
+            event.getProductQuantities().add(pq);
+        }
+        return total;
+    }
+
+    private BigDecimal applyCoupons(Order order, List<CouponItem> validCoupons, String sellerId, int totalAmount) {
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+
+        List<CouponItem> globalCoupons = validCoupons.stream()
+                .filter(c -> c.getCouponType() == CouponType.GLOBAL)
+                .toList();
+
+        for (CouponItem global : globalCoupons) {
+            if (BigDecimal.valueOf(totalAmount).compareTo(global.getMinPurchaseAmount()) >= 0) {
+                order.getCouponIds().add(global.getCouponId());
+                totalDiscount = totalDiscount.add(global.getDiscount());
+            }
+        }
+
+        Optional<CouponItem> optionalCoupon = validCoupons.stream()
+                .filter(c -> sellerId.equals(c.getCreatedByUserId()))
+                .filter(c -> BigDecimal.valueOf(totalAmount).compareTo(c.getMinPurchaseAmount()) >= 0)
+                .findFirst();
+
+        if (optionalCoupon.isPresent()) {
+            CouponItem c = optionalCoupon.get();
+            totalDiscount = totalDiscount.add(c.getDiscount());
+            order.getCouponIds().add(c.getCouponId());
+        }
+
+
+        return totalDiscount;
+    }
+
+    private OrderTracker buildOrderTracker(Long orderId, String groupId) {
+        OrderTracker tracker = new OrderTracker();
+        tracker.setId(orderId.toString() + groupId);
+        tracker.setOrderId(orderId);
+        tracker.setOrderGroupId(groupId);
+        tracker.setStatus("fail" + groupId);
+        return tracker;
+    }
 
     public OrderUpdateStatusEvent buildUpdateEvent(UserDTO userDTO, Long orderId, ORDER_STATUS orderStatus){
         OrderUpdateStatusEvent orderUpdateStatusEvent = new OrderUpdateStatusEvent();
@@ -210,6 +277,7 @@ public class OrderServiceImpl implements OrderService{
         return orderUpdateStatusEvent;
     }
 
+   
     public void sendStockUpdate(StockUpdateEvent event) {
         streamBridge.send("stockUpdate-out-0", event);
     }
