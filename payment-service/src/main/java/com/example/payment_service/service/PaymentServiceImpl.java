@@ -49,7 +49,7 @@ public class PaymentServiceImpl implements PaymentService{
     public String createVNPayUrl(OrderDTO orderDTO) {
         try {
             long amountInVND = (long) (orderDTO.getOrderAmount() * 100L); // VNPay yêu cầu số tiền tính bằng VND * 100
-            String vnp_TxnRef = orderDTO.getPaymentType() + "_" + orderDTO.getOrderId().toString(); // Mã giao dịch duy nhất
+            String vnp_TxnRef = orderDTO.getPaymentType() + "-" + orderDTO.getOrderId().toString(); // Mã giao dịch duy nhất
             String vnp_IpAddr = "127.0.0.1"; // IP người dùng (có thể lấy từ request)
 
             Map<String, String> vnp_Params = new HashMap<>();
@@ -99,7 +99,7 @@ public class PaymentServiceImpl implements PaymentService{
         if ("00".equals(vnp_ResponseCode)) {
 
             //Extract vnp_TxnRef
-            String[] parts = queryParams.get("vnp_TxnRef").split("_");
+            String[] parts = queryParams.get("vnp_TxnRef").split("-");
             String paymentType = parts[0];         // "ORDER_TO_PAYMENT"
             Long orderId = Long.parseLong(parts[1]); // 12345L
 

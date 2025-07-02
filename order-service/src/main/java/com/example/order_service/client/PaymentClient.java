@@ -4,6 +4,7 @@ import com.example.order_service.DTO.PaymentDTO;
 import com.example.order_service.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(name = "payment-service",
         path = "/api/vnpay",
@@ -11,5 +12,5 @@ import org.springframework.web.bind.annotation.PostMapping;
 )
 public interface PaymentClient {
     @PostMapping("/create-payment")
-    String createPayment(PaymentDTO paymentDTO);
+    String createPayment(@RequestBody PaymentDTO paymentDTO);
 }

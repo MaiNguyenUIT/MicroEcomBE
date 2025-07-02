@@ -28,7 +28,7 @@ public class PaymentListener {
     @Bean
     public Consumer<PaymentEvent> paymentSuccess(){
         return event -> {
-            Order order = orderRepository.findById(event.getOrderId()).orElseThrow(
+            Order order = orderRepository.findByIdWithItems(event.getOrderId()).orElseThrow(
                     () -> new NotFoundException("Order is not found with id: " + event.getOrderId())
             );
             System.out.println("Update order status");

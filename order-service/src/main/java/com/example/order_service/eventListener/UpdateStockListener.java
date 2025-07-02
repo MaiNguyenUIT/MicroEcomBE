@@ -54,9 +54,11 @@ public class UpdateStockListener {
             Order order = orderRepository.findById(event.getOrderId()).orElseThrow(
                     () -> new NotFoundException("Order is not found with id: " + event.getOrderId())
             );
+            order.setOrderStatus(ORDER_STATUS.PAID);
+            orderRepository.save(order);
 
             OrderConfirmEvent orderConfirmEvent = new OrderConfirmEvent();
-            orderConfirmEvent.setOrderStatus(order.getOrderStatus());
+            orderConfirmEvent.setOrderStatus(ORDER_STATUS.PAID);
             orderConfirmEvent.setOrderAmount(order.getOrderAmount());
             orderConfirmEvent.setId(order.getId());
             orderConfirmEvent.setUserId(order.getUserId());

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.order_service.DTO.OrderDirectlyDTO;
 
 import java.util.List;
 
@@ -42,5 +43,15 @@ public class OrderController {
     @PostMapping("/{id}")
     public ResponseEntity<String> onlinePaymentOrder(@PathVariable Long id) throws Exception {
         return ResponseEntity.ok(orderService.onlinePaymentOrder(id));
+    }
+
+    @PostMapping("/directly/offline")
+    public ResponseEntity<Order> createOrderDirectlyOffline(@RequestBody OrderDirectlyDTO orderDTO){
+        return ResponseEntity.ok(orderService.createOrderDirectlyOffline(orderDTO));
+    }
+
+    @PostMapping("/directly/online")
+    public ResponseEntity<String> createOrderDirectlyOnline(@RequestBody OrderDirectlyDTO orderDTO){
+        return ResponseEntity.ok(orderService.createOrderDirectlyOnline(orderDTO));
     }
 }

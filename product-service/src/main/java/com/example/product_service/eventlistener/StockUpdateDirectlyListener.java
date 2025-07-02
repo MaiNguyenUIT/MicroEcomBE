@@ -124,6 +124,7 @@ public class StockUpdateDirectlyListener {
                             .orElseThrow();
 
             productStockReservation.setState(PRODUCT_RESERVATION_STATE.RELEASE);
+            productStockReservationRepository.save(productStockReservation);
             Product product = productRepository.findById(event.getProductId()).orElseThrow(
                     () -> new NotFoundException("Product is not found with id: " + event.getProductId())
             );
