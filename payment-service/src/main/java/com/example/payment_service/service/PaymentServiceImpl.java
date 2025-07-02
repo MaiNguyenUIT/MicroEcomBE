@@ -2,6 +2,7 @@ package com.example.payment_service.service;
 
 import com.example.payment_service.DTO.OrderDTO;
 import com.example.payment_service.ENUM.PAYMENT_STATUS;
+import com.example.payment_service.ENUM.PAYMENT_TYPE;
 import com.example.payment_service.event.PaymentEvent;
 import com.example.payment_service.exception.BadRequestException;
 import com.example.payment_service.model.Payment;
@@ -48,7 +49,7 @@ public class PaymentServiceImpl implements PaymentService{
     public String createVNPayUrl(OrderDTO orderDTO) {
         try {
             long amountInVND = (long) (orderDTO.getOrderAmount() * 100L); // VNPay yêu cầu số tiền tính bằng VND * 100
-            String vnp_TxnRef = orderDTO.getOrderId().toString(); // Mã giao dịch duy nhất
+            String vnp_TxnRef = orderDTO.getPaymentType() + "-" + orderDTO.getOrderId().toString(); // Mã giao dịch duy nhất
             String vnp_IpAddr = "127.0.0.1"; // IP người dùng (có thể lấy từ request)
 
             Map<String, String> vnp_Params = new HashMap<>();
@@ -81,7 +82,6 @@ public class PaymentServiceImpl implements PaymentService{
     @Override
     public String returnVNPay(Map<String, String> queryParams) {
         String vnp_SecureHash = queryParams.get("vnp_SecureHash");
-        System.out.println(vnp_SecureHash);
         queryParams.remove("vnp_SecureHash");
 
         queryParams.replaceAll((k, v) -> URLDecoder.decode(v, StandardCharsets.UTF_8));
@@ -89,7 +89,6 @@ public class PaymentServiceImpl implements PaymentService{
         // **Kiểm tra chữ ký bảo mật**
         String signData = createQueryString(queryParams);
         String checkSum = hmacSHA512(vnp_HashSecret, signData);
-        System.out.println(checkSum);
         assert checkSum != null;
         if (!checkSum.equals(vnp_SecureHash)) {
             throw new BadRequestException("Giao dịch không hợp lệ (Sai chữ ký)");
@@ -98,9 +97,20 @@ public class PaymentServiceImpl implements PaymentService{
         // **Kiểm tra trạng thái giao dịch**
         String vnp_ResponseCode = queryParams.get("vnp_ResponseCode");
         if ("00".equals(vnp_ResponseCode)) {
+
+            //Extract vnp_TxnRef
+            String[] parts = queryParams.get("vnp_TxnRef").split("-");
+            String paymentType = parts[0];         // "ORDER_TO_PAYMENT"
+            Long orderId = Long.parseLong(parts[1]); // 12345L
+
             PaymentEvent paymentEvent = new PaymentEvent();
             paymentEvent.setPaymentStatus(PAYMENT_STATUS.SUCCESS);
-            paymentEvent.setOrderId(Long.valueOf(queryParams.get("vnp_TxnRef")));
+            paymentEvent.setOrderId(orderId);
+            if(Objects.equals(paymentType, "ORDER_THEN_PAYMENT")){
+                paymentEvent.setPaymentType(PAYMENT_TYPE.ORDER_THEN_PAYMENT);
+            } else {
+                paymentEvent.setPaymentType(PAYMENT_TYPE.PAYMENT_THEN_ORDER);
+            }
 
             Payment payment = new Payment();
             payment.setPaymentStatus(PAYMENT_STATUS.SUCCESS);

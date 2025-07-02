@@ -1,27 +1,29 @@
 package com.example.product_service.eventlistener;
 
+import com.example.product_service.ENUM.PRODUCT_RESERVATION_STATE;
 import com.example.product_service.ENUM.PRODUCT_STATE;
 import com.example.product_service.event.AfterStockUpdateEvent;
 import com.example.product_service.event.StockUpdateEvent;
-import com.example.product_service.exception.NotFoundException;
 import com.example.product_service.model.Product;
 import com.example.product_service.model.ProductQuantity;
+import com.example.product_service.model.ProductStockReservation;
 import com.example.product_service.repository.ProductRepository;
+import com.example.product_service.repository.ProductStockReservationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 @Component
 public class StockUpdateListener {
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private ProductStockReservationRepository productStockReservationRepository;
 
     private final StreamBridge streamBridge;
 
@@ -38,14 +40,25 @@ public class StockUpdateListener {
             List<String> insufficientProducts = new ArrayList<>();
             Map<String, Product> productMap = new HashMap<>();
 
+            int totalReservation = 0;
             for (ProductQuantity item : items) {
                 Product product = productRepository.findById(item.getProductId()).orElse(null);
-                if (product == null) {
+                if (product == null || product.getProductState().equals(PRODUCT_STATE.HIDDEN)) {
                     insufficientProducts.add(item.getProductId());
                     continue;
                 }
 
-                if (product.getQuantity() < item.getQuantity()) {
+                List<ProductStockReservation> productStockReservations =
+                        productStockReservationRepository.findByProductId(product.getId());
+
+                if(!productStockReservations.isEmpty()){
+                    for (ProductStockReservation productStockReservation : productStockReservations){
+                        if(productStockReservation.getState().equals(PRODUCT_RESERVATION_STATE.HELD)){
+                            totalReservation += productStockReservation.getQuantity();
+                        }
+                    }
+                }
+                if (product.getQuantity() < (item.getQuantity() + totalReservation)) {
                     insufficientProducts.add(item.getProductId());
                 } else {
                     productMap.put(item.getProductId(), product);
@@ -67,7 +80,7 @@ public class StockUpdateListener {
                 product.setQuantity(afterQuantity);
                 product.setSold(product.getSold() + item.getQuantity());
 
-                if (afterQuantity == 0) {
+                if (afterQuantity - totalReservation == 0) {
                     product.setProductState(PRODUCT_STATE.HIDDEN);
                 }
 
