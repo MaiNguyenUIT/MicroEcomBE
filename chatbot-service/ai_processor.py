@@ -8,15 +8,25 @@ from huggingface_hub import InferenceClient
 from decimal import Decimal
 from typing import Any
 from dotenv import load_dotenv
-
+import google.generativeai as genai
 load_dotenv() 
 class EnhancedAIProcessor:
     """Enhanced AI Processor với RAG capabilities"""
-    
-    def __init__(self, data_querier: EnhancedDataQuerier, model_name="HuggingFaceH4/zephyr-7b-beta"):
+        
+    def __init__(self, data_querier: EnhancedDataQuerier, model_name="gemini-1.5-flash"):
         self.data_querier = data_querier
-        self.client = InferenceClient(model=model_name, token=os.getenv("hugging-face_token"))
-    
+        self.model_name = model_name
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel(self.model_name,
+                                           generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                top_p=0.95,
+                top_k=40,
+                max_output_tokens=512,
+                stop_sequences=["</s>"]
+            ))
+        
     def generate_rag_response(self, user_query: str) -> str:
         query_result = self.data_querier.query_with_context(user_query)
         context = self._prepare_context(query_result)
@@ -83,20 +93,9 @@ class EnhancedAIProcessor:
         """
         print(f"📝 AI Prompt:\n{prompt[:500]}...")
         try:
-            response = self.client.text_generation(
-                prompt=prompt,
-                max_new_tokens=512,
-                temperature=0.7,
-                top_p=0.95,
-                stop_sequences=["</s>"]
-            )
-            cleaned_response = response.strip()
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
 
-            if cleaned_response.startswith("RESPONSE:"):
-                cleaned_response = cleaned_response.replace("RESPONSE:", "").strip()
-            return cleaned_response
-
-            
         except Exception as e:
             print(f"❌ AI response error: {e}")
             return f"Đã tìm thấy dữ liệu liên quan đến câu hỏi của bạn, nhưng gặp lỗi khi tạo câu trả lời chi tiết. Lỗi: {str(e)}"

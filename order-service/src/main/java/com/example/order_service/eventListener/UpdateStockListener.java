@@ -3,6 +3,7 @@ package com.example.order_service.eventListener;
 import com.example.order_service.ENUM.ORDER_STATUS;
 import com.example.order_service.event.AfterStockUpdateEvent;
 import com.example.order_service.event.ClearCartEvent;
+import com.example.order_service.event.MinusCouponEvent;
 import com.example.order_service.event.OrderConfirmEvent;
 import com.example.order_service.exception.NotFoundException;
 import com.example.order_service.model.Order;
@@ -49,7 +50,7 @@ public class UpdateStockListener {
     }
 
     @Bean
-    public Consumer<AfterStockUpdateEvent> stockUpdateDirectlySuccess(){
+    public Consumer<AfterStockUpdateEvent> stockUpdateDirectlyOnlineSuccess(){
         return event -> {
             Order order = orderRepository.findById(event.getOrderId()).orElseThrow(
                     () -> new NotFoundException("Order is not found with id: " + event.getOrderId())
@@ -62,7 +63,33 @@ public class UpdateStockListener {
             orderConfirmEvent.setOrderAmount(order.getOrderAmount());
             orderConfirmEvent.setId(order.getId());
             orderConfirmEvent.setUserId(order.getUserId());
+
+            MinusCouponEvent minusCouponEvent = new MinusCouponEvent();
+            minusCouponEvent.setCouponIds(order.getCouponIds());
+
             streamBridge.send("sendToGetFullConfirmOrder-out-0", orderConfirmEvent);
+            streamBridge.send("minusCoupon-out-0", minusCouponEvent);
+        };
+    }
+
+    @Bean
+    public Consumer<AfterStockUpdateEvent> stockUpdateDirectlyOfflineSuccess(){
+        return event -> {
+            Order order = orderRepository.findById(event.getOrderId()).orElseThrow(
+                    () -> new NotFoundException("Order is not found with id: " + event.getOrderId())
+            );
+
+            OrderConfirmEvent orderConfirmEvent = new OrderConfirmEvent();
+            orderConfirmEvent.setOrderStatus(order.getOrderStatus());
+            orderConfirmEvent.setOrderAmount(order.getOrderAmount());
+            orderConfirmEvent.setId(order.getId());
+            orderConfirmEvent.setUserId(order.getUserId());
+
+            MinusCouponEvent minusCouponEvent = new MinusCouponEvent();
+            minusCouponEvent.setCouponIds(order.getCouponIds());
+
+            streamBridge.send("sendToGetFullConfirmOrder-out-0", orderConfirmEvent);
+            streamBridge.send("minusCoupon-out-0", minusCouponEvent);
         };
     }
 
