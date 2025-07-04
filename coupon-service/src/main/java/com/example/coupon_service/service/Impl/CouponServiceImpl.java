@@ -266,11 +266,7 @@ public class CouponServiceImpl implements CouponService {
             String creatorUserId,
             CodeGenerationConfig codeConfig
     ) {
-        CouponResponseDTO createdCoupons = null;
-        if (effectiveCouponType == CouponType.GLOBAL) {
-            creatorUserId = null;
-        }
-
+        CouponResponseDTO createdCoupons = new CouponResponseDTO();
         Coupon newCoupon = couponMapper.toEntity(request);
 
         newCoupon.setCouponType(effectiveCouponType);
@@ -289,7 +285,6 @@ public class CouponServiceImpl implements CouponService {
                 codeGeneratedAndSavedSuccessfully = true;
                 break;
             } catch (DataIntegrityViolationException e) {
-                System.err.println("WARN: Failed to generate unique coupon code, retrying... (Attempt: " + (retry + 1) + ")");
                 if (retry == MAX_CODE_GENERATION_RETRIES - 1) {
                     throw new RuntimeException("Failed to generate a unique coupon code after " + MAX_CODE_GENERATION_RETRIES + " retries for coupon batch.", e);
                 }

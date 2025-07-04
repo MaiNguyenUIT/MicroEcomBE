@@ -51,11 +51,6 @@ public class StockUpdateDirectlyListener {
             afterStockUpdateEvent.setOrderGroupId(event.getOrderGroupId());
             afterStockUpdateEvent.setOrderId(event.getOrderId());
 
-            if(product.getQuantity() < item.getQuantity()){
-                streamBridge.send("stockUpdateFail-out-0", afterStockUpdateEvent);
-                throw new BadRequestException("Product is not enough with id: " + product.getId());
-            }
-
             List<ProductStockReservation> productStockReservations =
                     productStockReservationRepository.findByProductId(product.getId());
             int totalReservation = 0;
@@ -78,7 +73,7 @@ public class StockUpdateDirectlyListener {
                 product.setProductState(PRODUCT_STATE.HIDDEN);
             }
             productRepository.save(product);
-            streamBridge.send("stockUpdateDirectlySuccess-out-0", afterStockUpdateEvent);
+            streamBridge.send("stockUpdateDirectlyOfflineSuccess-out-0", afterStockUpdateEvent);
         };
     }
 
@@ -136,7 +131,7 @@ public class StockUpdateDirectlyListener {
             AfterStockUpdateEvent afterStockUpdateEvent = new AfterStockUpdateEvent();
             afterStockUpdateEvent.setOrderId(event.getOrderId());
             afterStockUpdateEvent.setOrderGroupId(UUID.randomUUID().toString());
-            streamBridge.send("stockUpdateDirectlySuccess-out-0", afterStockUpdateEvent);
+            streamBridge.send("stockUpdateDirectlyOnlineSuccess-out-0", afterStockUpdateEvent);
         };
     }
 }

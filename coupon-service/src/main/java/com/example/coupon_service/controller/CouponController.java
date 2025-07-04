@@ -35,10 +35,7 @@ public class CouponController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SELLER')")
     public ResponseEntity<CouponResponseDTO> createCoupon(
             @Valid @RequestBody CouponCreateRequestDTO request) {
-
-        
         CouponResponseDTO createdCoupons = couponService.createCoupon(request);
-
         return new ResponseEntity<>(createdCoupons, HttpStatus.CREATED);
     }
 

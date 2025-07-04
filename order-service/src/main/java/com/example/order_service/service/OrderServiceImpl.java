@@ -26,6 +26,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService{
@@ -122,93 +123,6 @@ public class OrderServiceImpl implements OrderService{
         return order;
     }
 
-    @Override
-    public Order createOrderDirectlyOffline(OrderDirectlyDTO orderDirectlyDTO) {
-        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
-        if (productResponse == null){
-            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
-        }
-        String orderGroupId = UUID.randomUUID().toString();
-        Order order = new Order();
-        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
-        order.setSellerId(productResponse.getOwnerId());
-        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
-        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
-        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
-        order.setOrderItems(new ArrayList<>());
-
-        //Create order item
-        OrderItem orderItem = new OrderItem();
-        orderItem.setProductId(orderDirectlyDTO.getProductId());
-        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
-        orderItem.setOrder(order);
-        orderItem.setOrder(order);
-
-        order.getOrderItems().add(orderItem);
-        order.setOrderAmount(orderDirectlyDTO.getProductQuantity()*productResponse.getPrice());
-        order.setOrderGroupId(orderGroupId);
-
-        ProductQuantity productQuantity = new ProductQuantity();
-        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
-        productQuantity.setProductId(orderDirectlyDTO.getProductId());
-
-        Order createdOrder = orderRepository.save(order);
-        StockUpdateDirectlyEvent stockUpdateDirectlyEvent = new StockUpdateDirectlyEvent();
-        stockUpdateDirectlyEvent.setOrderId(createdOrder.getId());
-        stockUpdateDirectlyEvent.setProductQuantity(productQuantity);
-        stockUpdateDirectlyEvent.setOrderGroupId(orderGroupId);
-
-        streamBridge.send("stockUpdateDirectly-out-0", stockUpdateDirectlyEvent);
-
-        return createdOrder;
-    }
-
-    @Override
-    public String createOrderDirectlyOnline(OrderDirectlyDTO orderDirectlyDTO) {
-        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
-        if (productResponse == null){
-            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
-        }
-        String orderGroupId = UUID.randomUUID().toString();
-        Order order = new Order();
-        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
-        order.setSellerId(productResponse.getOwnerId());
-        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
-        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
-        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
-        order.setOrderItems(new ArrayList<>());
-
-        //Create order item
-        OrderItem orderItem = new OrderItem();
-        orderItem.setProductId(orderDirectlyDTO.getProductId());
-        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
-        orderItem.setOrder(order);
-        orderItem.setOrder(order);
-
-        order.getOrderItems().add(orderItem);
-        order.setOrderAmount(orderDirectlyDTO.getProductQuantity()*productResponse.getPrice());
-        order.setOrderGroupId(orderGroupId);
-
-        ProductQuantity productQuantity = new ProductQuantity();
-        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
-        productQuantity.setProductId(orderDirectlyDTO.getProductId());
-
-        Order createdOrder = orderRepository.save(order);
-
-        //Create product reservation event;
-        ProductReservationEvent productReservationEvent = new ProductReservationEvent(productQuantity.getProductId(),
-                createdOrder.getId(), productQuantity.getQuantity());
-
-        streamBridge.send("createProductReservation-out-0", productReservationEvent);
-
-        //Create payment url
-        PaymentDTO paymentDTO = new PaymentDTO();
-        paymentDTO.setOrderId(createdOrder.getId());
-        paymentDTO.setOrderAmount(order.getOrderAmount());
-        paymentDTO.setPaymentType(PAYMENT_TYPE.PAYMENT_THEN_ORDER);
-        return paymentClient.createPayment(paymentDTO);
-    }
-  
     private int buildOrderItems(Order order, List<CartItemDTO> items, StockUpdateEvent event) {
         int total = 0;
         for (CartItemDTO item : items) {
@@ -253,8 +167,172 @@ public class OrderServiceImpl implements OrderService{
             order.getCouponIds().add(c.getCouponId());
         }
 
-
         return totalDiscount;
+    }
+
+    @Override
+    public Order createOrderDirectlyOffline(OrderDirectlyDTO orderDirectlyDTO) {
+        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
+        if (productResponse == null){
+            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
+        }
+
+        List<CouponItem> validCoupons = new ArrayList<>();
+
+        if (!orderDirectlyDTO.getCouponIds().isEmpty()) {
+            CouponValidationResponse response = couponClient.getCouponsValidationResponses(
+                    CouponMapperUtil.toCouponsRequest(orderDirectlyDTO.getCouponIds())
+            );
+
+            if (!response.isSuccess()) {
+                throw new BadRequestException("Invalid coupons provided");
+            }
+
+            validCoupons = response.getValidCoupons();
+        }
+        List<CouponItem> invalidCouponsBySellerId = new ArrayList<>();
+
+        for(CouponItem couponItem : validCoupons){
+            if ((!couponItem.getCreatedByUserId().equals(productResponse.getOwnerId())
+                    && !couponItem.getCouponType().equals(CouponType.GLOBAL))
+                    || BigDecimal.valueOf((long) orderDirectlyDTO.getProductQuantity() * productResponse.getPrice())
+                    .compareTo(couponItem.getMinPurchaseAmount()) < 0) {
+
+                invalidCouponsBySellerId.add(couponItem);
+            }
+        }
+
+        if(!invalidCouponsBySellerId.isEmpty()){
+            throw new BadRequestException("Invalid coupons provided");
+        }
+
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+        for(CouponItem couponItem : validCoupons){
+            totalDiscount = totalDiscount.add(couponItem.getDiscount());
+        }
+
+        String orderGroupId = UUID.randomUUID().toString();
+        Order order = new Order();
+        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
+        order.setSellerId(productResponse.getOwnerId());
+        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
+        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
+        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
+        order.setOrderItems(new ArrayList<>());
+
+        //Create order item
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductId(orderDirectlyDTO.getProductId());
+        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
+        orderItem.setOrder(order);
+        orderItem.setOrder(order);
+
+        order.getOrderItems().add(orderItem);
+        int finalAmount = BigDecimal.valueOf((long) orderDirectlyDTO.getProductQuantity() *productResponse.getPrice())
+                .multiply(BigDecimal.ONE.subtract(totalDiscount))
+                .intValue();
+        order.setOrderAmount(finalAmount);
+        order.setOrderGroupId(orderGroupId);
+        order.setCouponIds(orderDirectlyDTO.getCouponIds());
+
+        ProductQuantity productQuantity = new ProductQuantity();
+        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
+        productQuantity.setProductId(orderDirectlyDTO.getProductId());
+
+        Order createdOrder = orderRepository.save(order);
+        StockUpdateDirectlyEvent stockUpdateDirectlyEvent = new StockUpdateDirectlyEvent();
+        stockUpdateDirectlyEvent.setOrderId(createdOrder.getId());
+        stockUpdateDirectlyEvent.setProductQuantity(productQuantity);
+        stockUpdateDirectlyEvent.setOrderGroupId(orderGroupId);
+
+        streamBridge.send("stockUpdateDirectly-out-0", stockUpdateDirectlyEvent);
+
+        return createdOrder;
+    }
+
+    @Override
+    public String createOrderDirectlyOnline(OrderDirectlyDTO orderDirectlyDTO) {
+        ProductResponse productResponse = productClient.getProductById(orderDirectlyDTO.getProductId());
+        if (productResponse == null){
+            throw new NotFoundException("Product not found with id" + orderDirectlyDTO.getProductId());
+        }
+        String orderGroupId = UUID.randomUUID().toString();
+        Order order = new Order();
+        order.setShippingAddress(orderDirectlyDTO.getShippingAddress());
+        order.setSellerId(productResponse.getOwnerId());
+        order.setUserId(SecurityContextHolder.getContext().getAuthentication().getName());
+        order.setPaymentMethod(orderDirectlyDTO.getPaymentMethod());
+        order.setOrderDateTime(orderDirectlyDTO.getOrderDateTime());
+        order.setOrderItems(new ArrayList<>());
+
+        List<CouponItem> validCoupons = new ArrayList<>();
+
+        if (!orderDirectlyDTO.getCouponIds().isEmpty()) {
+            CouponValidationResponse response = couponClient.getCouponsValidationResponses(
+                    CouponMapperUtil.toCouponsRequest(orderDirectlyDTO.getCouponIds())
+            );
+
+            if (!response.isSuccess()) {
+                throw new BadRequestException("Invalid coupons provided");
+            }
+
+            validCoupons = response.getValidCoupons();
+        }
+        List<CouponItem> invalidCouponsBySellerId = new ArrayList<>();
+
+        for(CouponItem couponItem : validCoupons){
+            if ((!couponItem.getCreatedByUserId().equals(productResponse.getOwnerId())
+                    && !couponItem.getCouponType().equals(CouponType.GLOBAL))
+                    || BigDecimal.valueOf((long) orderDirectlyDTO.getProductQuantity() * productResponse.getPrice())
+                    .compareTo(couponItem.getMinPurchaseAmount()) < 0) {
+
+                invalidCouponsBySellerId.add(couponItem);
+            }
+        }
+
+        if(!invalidCouponsBySellerId.isEmpty()){
+            throw new BadRequestException("Invalid coupons provided");
+        }
+
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+        for(CouponItem couponItem : validCoupons){
+            totalDiscount = totalDiscount.add(couponItem.getDiscount());
+        }
+
+        //Create order item
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductId(orderDirectlyDTO.getProductId());
+        orderItem.setQuantity(orderDirectlyDTO.getProductQuantity());
+        orderItem.setOrder(order);
+        orderItem.setOrder(order);
+
+        order.getOrderItems().add(orderItem);
+        order.getOrderItems().add(orderItem);
+        int finalAmount = BigDecimal.valueOf((long) orderDirectlyDTO.getProductQuantity() *productResponse.getPrice())
+                .multiply(BigDecimal.ONE.subtract(totalDiscount))
+                .intValue();
+        order.setOrderAmount(finalAmount);
+        order.setOrderGroupId(orderGroupId);
+        order.setCouponIds(orderDirectlyDTO.getCouponIds());
+
+        ProductQuantity productQuantity = new ProductQuantity();
+        productQuantity.setQuantity(orderDirectlyDTO.getProductQuantity());
+        productQuantity.setProductId(orderDirectlyDTO.getProductId());
+
+        Order createdOrder = orderRepository.save(order);
+
+        //Create product reservation event;
+        ProductReservationEvent productReservationEvent = new ProductReservationEvent(productQuantity.getProductId(),
+                createdOrder.getId(), productQuantity.getQuantity());
+
+        streamBridge.send("createProductReservation-out-0", productReservationEvent);
+
+        //Create payment url
+        PaymentDTO paymentDTO = new PaymentDTO();
+        paymentDTO.setOrderId(createdOrder.getId());
+        paymentDTO.setOrderAmount(order.getOrderAmount());
+        paymentDTO.setPaymentType(PAYMENT_TYPE.PAYMENT_THEN_ORDER);
+        return paymentClient.createPayment(paymentDTO);
     }
 
     private OrderTracker buildOrderTracker(Long orderId, String groupId) {

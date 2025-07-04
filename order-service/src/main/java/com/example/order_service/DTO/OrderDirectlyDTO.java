@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 public class OrderDirectlyDTO {
     private LocalDateTime orderDateTime = LocalDateTime.now();
-    private List<String> couponIds;
+    private List<Long> couponIds;
     private ShippingAddress shippingAddress;
     private PAYMENT_METHOD paymentMethod;
     private String productId;
